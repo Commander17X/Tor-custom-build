@@ -102,10 +102,6 @@ options_validate_dirauth_mode(const or_options_t *old_options,
     REJECT("AuthoritativeDir is set, but none of "
            "(Bridge/V3)AuthoritativeDir is set.");
 
-  /* If we have a v3bandwidthsfile and it's broken, complain on startup */
-  if (options->V3BandwidthsFile && !old_options) {
-    dirserv_read_measured_bandwidths(options->V3BandwidthsFile, NULL, NULL, NULL);
-  }
   /* same for guardfraction file */
   if (options->GuardfractionFile && !old_options) {
     dirserv_read_guardfraction_file(options->GuardfractionFile, NULL);
