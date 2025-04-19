@@ -1,21 +1,29 @@
-/* Copyright (c) 2001-2004, Roger Dingledine.
+/* Copyright (c) 2001 Matej Pfajfar.
+ * Copyright (c) 2001-2004, Roger Dingledine.
  * Copyright (c) 2004-2006, Roger Dingledine, Nick Mathewson.
  * Copyright (c) 2007-2021, The Tor Project, Inc. */
 /* See LICENSE for licensing information */
 
 /**
- * \file bwauth.c
- * \brief Code to read and apply bandwidth authority data.
+ * @file bwauth.c
+ * @brief Implementation of bandwidth authority functionality
  **/
 
 #define BWAUTH_PRIVATE
 #include "core/or/or.h"
-#include "feature/dirauth/bwauth.h"
+#include "feature/dirauth/bandwidth/bwauth.h"
+#include "feature/nodelist/routerlist.h"
+#include "feature/nodelist/nodelist.h"
+#include "lib/container/smartlist.h"
+#include "lib/crypt_ops/crypto_digest.h"
+#include "lib/encoding/confline.h"
+#include "lib/fs/files.h"
+#include "lib/string/printf.h"
+#include "lib/string/util_string.h"
 
 #include "app/config/config.h"
 #include "feature/dirauth/dirauth_sys.h"
 #include "feature/nodelist/networkstatus.h"
-#include "feature/nodelist/routerlist.h"
 #include "feature/dirparse/ns_parse.h"
 
 #include "feature/dirauth/dirauth_options_st.h"
