@@ -11,7 +11,7 @@
 
 #include "core/or/or.h"
 #include "feature/dirauth/bridgeauth.h"
-#include "feature/dirauth/voteflags.h"
+#include "feature/dirauth/voting/voteflags.h"
 #include "feature/nodelist/networkstatus.h"
 #include "feature/relay/router.h"
 #include "app/config/config.h"
