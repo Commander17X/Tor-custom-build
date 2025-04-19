@@ -1,4 +1,5 @@
-/* Copyright (c) 2001-2004, Roger Dingledine.
+/* Copyright (c) 2001 Matej Pfajfar.
+ * Copyright (c) 2001-2004, Roger Dingledine.
  * Copyright (c) 2004-2006, Roger Dingledine, Nick Mathewson.
  * Copyright (c) 2007-2021, The Tor Project, Inc. */
 /* See LICENSE for licensing information */
@@ -29,6 +30,23 @@
 #include "feature/nodelist/vote_routerstatus_st.h"
 
 static void dircollator_collate_by_ed25519(dircollator_t *dc);
+
+/* Structure definitions */
+struct double_digest_map {
+  struct ddmap_entry_t **hth_table;
+  unsigned hth_table_length;
+  unsigned hth_n_entries;
+  unsigned hth_load_limit;
+  int hth_prime_idx;
+};
+
+struct ddmap_entry_t {
+  struct ddmap_entry_t *node;
+  char rsa_sha1[DIGEST_LEN];
+  char ed25519[DIGEST_LEN];
+  int n_votes;
+  networkstatus_t **votes;
+};
 
 /** Hashtable entry mapping a pair of digests (actually an ed25519 key and an
  * RSA SHA1 digest) to an array of vote_routerstatus_t. */
@@ -323,4 +341,113 @@ dircollator_get_votes_for_router(dircollator_t *dc, int idx)
   tor_assert(idx < smartlist_len(dc->all_rsa_sha1_lst));
   return digestmap_get(dc->by_collated_rsa_sha1,
                        smartlist_get(dc->all_rsa_sha1_lst, idx));
+}
+
+/* Hash table functions */
+static unsigned
+ddmap_hash(const struct double_digest_map *map,
+           const char *rsa_sha1,
+           const char *ed25519)
+{
+  unsigned hash = 0;
+  for (int i = 0; i < DIGEST_LEN; i++) {
+    hash = (hash * 31) + (unsigned char)rsa_sha1[i];
+  }
+  for (int i = 0; i < DIGEST_LEN; i++) {
+    hash = (hash * 31) + (unsigned char)ed25519[i];
+  }
+  return hash % map->hth_table_length;
+}
+
+static struct ddmap_entry_t *
+ddmap_entry_new(const char *rsa_sha1, const char *ed25519)
+{
+  struct ddmap_entry_t *entry = tor_malloc_zero(sizeof(struct ddmap_entry_t));
+  memcpy(entry->rsa_sha1, rsa_sha1, DIGEST_LEN);
+  memcpy(entry->ed25519, ed25519, DIGEST_LEN);
+  entry->n_votes = 0;
+  entry->votes = NULL;
+  return entry;
+}
+
+static void
+ddmap_entry_free(struct ddmap_entry_t *entry)
+{
+  if (entry) {
+    tor_free(entry->votes);
+    tor_free(entry);
+  }
+}
+
+static void
+double_digest_map_init(struct double_digest_map *map)
+{
+  map->hth_table_length = 1024;
+  map->hth_n_entries = 0;
+  map->hth_load_limit = 768; // 75% load factor
+  map->hth_prime_idx = 0;
+  map->hth_table = tor_calloc(map->hth_table_length, sizeof(struct ddmap_entry_t *));
+}
+
+static void
+double_digest_map_clear(struct double_digest_map *map)
+{
+  for (unsigned i = 0; i < map->hth_table_length; i++) {
+    struct ddmap_entry_t *entry = map->hth_table[i];
+    while (entry) {
+      struct ddmap_entry_t *next = entry->node;
+      ddmap_entry_free(entry);
+      entry = next;
+    }
+  }
+  tor_free(map->hth_table);
+  map->hth_table = NULL;
+  map->hth_table_length = 0;
+  map->hth_n_entries = 0;
+}
+
+static struct ddmap_entry_t *
+double_digest_map_get(const struct double_digest_map *map,
+                     const char *rsa_sha1,
+                     const char *ed25519)
+{
+  unsigned idx = ddmap_hash(map, rsa_sha1, ed25519);
+  struct ddmap_entry_t *entry = map->hth_table[idx];
+  while (entry) {
+    if (memcmp(entry->rsa_sha1, rsa_sha1, DIGEST_LEN) == 0 &&
+        memcmp(entry->ed25519, ed25519, DIGEST_LEN) == 0) {
+      return entry;
+    }
+    entry = entry->node;
+  }
+  return NULL;
+}
+
+static void
+double_digest_map_set(struct double_digest_map *map,
+                     const char *rsa_sha1,
+                     const char *ed25519,
+                     networkstatus_t *vote)
+{
+  unsigned idx = ddmap_hash(map, rsa_sha1, ed25519);
+  struct ddmap_entry_t *entry = map->hth_table[idx];
+  
+  while (entry) {
+    if (memcmp(entry->rsa_sha1, rsa_sha1, DIGEST_LEN) == 0 &&
+        memcmp(entry->ed25519, ed25519, DIGEST_LEN) == 0) {
+      break;
+    }
+    entry = entry->node;
+  }
+  
+  if (!entry) {
+    entry = ddmap_entry_new(rsa_sha1, ed25519);
+    entry->node = map->hth_table[idx];
+    map->hth_table[idx] = entry;
+    map->hth_n_entries++;
+  }
+  
+  entry->n_votes++;
+  entry->votes = tor_reallocarray(entry->votes, entry->n_votes, sizeof(networkstatus_t *));
+  entry->votes[entry->n_votes - 1] = vote;
 }
