@@ -2663,7 +2663,7 @@ client_circ_negotiation_message(const extend_info_t *ei,
  * consensus bandwidth weighting as a placeholder.
  */
 static const node_t *
-node_choose_by_performance(const smartlist_t *nodes, weight_rule_t rule,
+node_choose_by_performance(const smartlist_t *nodes, bandwidth_weight_rule_t rule,
                            const crypt_path_t *relative_to_hop)
 {
   /*
