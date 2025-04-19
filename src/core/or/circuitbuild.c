@@ -85,6 +85,11 @@
 #include "trunnel/extension.h"
 #include "trunnel/congestion_control.h"
 
+/* Forward declaration for node_choose_by_performance */
+static const node_t *node_choose_by_performance(const smartlist_t *nodes,
+                                              bandwidth_weight_rule_t rule,
+                                              const crypt_path_t *relative_to_hop);
+
 static int circuit_send_first_onion_skin(origin_circuit_t *circ);
 static int circuit_build_no_more_hops(origin_circuit_t *circ);
 static int circuit_send_intermediate_onion_skin(origin_circuit_t *circ,
