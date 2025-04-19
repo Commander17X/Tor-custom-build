@@ -59,7 +59,10 @@ typedef struct ddmap_entry_t ddmap_entry_t;
 static void
 ddmap_entry_free_(ddmap_entry_t *e)
 {
-  tor_free(e);
+  if (e) {
+    tor_free(e->votes);
+    tor_free(e);
+  }
 }
 
 /** Return a new empty ddmap_entry, with <b>n_votes</b> elements in
