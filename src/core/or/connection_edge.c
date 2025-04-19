@@ -4884,6 +4884,5 @@ connection_edge_free_all(void)
 static int
 address_is_sn(const char *address)
 {
-  return address && strlen(address) > 3 &&
-         !strcasecmp(address + strlen(address) - 3, ".sn");
+  return strcasecmp(address, "sn") == 0;
 }
