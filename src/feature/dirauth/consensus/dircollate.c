@@ -50,16 +50,7 @@ struct ddmap_entry_t {
 
 /** Hashtable entry mapping a pair of digests (actually an ed25519 key and an
  * RSA SHA1 digest) to an array of vote_routerstatus_t. */
-typedef struct ddmap_entry_t {
-  HT_ENTRY(ddmap_entry_t) node;
-  /** A SHA1-RSA1024 identity digest and Ed25519 identity key,
-   * concatenated.  (If there is no ed25519 identity key, there is no
-   * entry in this table.) */
-  uint8_t d[DIGEST_LEN + DIGEST256_LEN];
-  /* The nth member of this array corresponds to the vote_routerstatus_t (if
-   * any) received for this digest pair from the nth voter. */
-  vote_routerstatus_t *vrs_lst[FLEXIBLE_ARRAY_MEMBER];
-} ddmap_entry_t;
+typedef struct ddmap_entry_t ddmap_entry_t;
 
 #define ddmap_entry_free(e) \
   FREE_AND_NULL(ddmap_entry_t, ddmap_entry_free_, (e))

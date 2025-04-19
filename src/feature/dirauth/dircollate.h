@@ -15,6 +15,30 @@
 #include "core/or/or.h"
 #include "feature/nodelist/routerlist.h"
 
+/* Structure definitions */
+struct double_digest_map {
+  struct ddmap_entry_t **hth_table;
+  unsigned hth_table_length;
+  unsigned hth_n_entries;
+  unsigned hth_load_limit;
+  int hth_prime_idx;
+};
+
+struct ddmap_entry_t {
+  struct ddmap_entry_t *node;
+  char rsa_sha1[DIGEST_LEN];
+  char ed25519[DIGEST_LEN];
+  int n_votes;
+  networkstatus_t **votes;
+};
+
+struct dircollator_t {
+  int n_votes;
+  int n_authorities;
+  digestmap_t *by_rsa_sha1;
+  struct double_digest_map by_both_ids;
+};
+
 /* Function declarations */
 int dircollate_init(void);
 void dircollate_cleanup(void);
