@@ -560,9 +560,3 @@ src/
 ### License
 
 GNU General Public License v3.0
-
-### Contact
-
-For questions or issues:
-- Issue tracker: [GitHub Issues](https://github.com/your-repo/issues)
-- Email: support@sn.network 
