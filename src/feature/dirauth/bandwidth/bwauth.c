@@ -387,7 +387,7 @@ measured_bw_line_parse(measured_bw_line_t *out, const char *orig_line,
   char *cp = line;
   int got_bw = 0;
   int got_node_id = 0;
-  char *strtok_state; /* lame sauce d'jour */
+  char *strtok_state;
 
   if (strlen(line) == 0) {
     log_warn(LD_DIRSERV, "Empty line in bandwidth file");
@@ -395,7 +395,6 @@ measured_bw_line_parse(measured_bw_line_t *out, const char *orig_line,
     return -1;
   }
 
-  /* Remove end of line character, so that is not part of the token */
   if (line[strlen(line) - 1] == '\n') {
     line[strlen(line) - 1] = '\0';
   }
@@ -417,7 +416,6 @@ measured_bw_line_parse(measured_bw_line_t *out, const char *orig_line,
   }
 
   do {
-    // If the line contains vote=0, ignore it.
     if (strcmpstart(cp, "vote=0") == 0) {
       log_debug(LD_DIRSERV, "Ignoring bandwidth file line that contains "
                 "vote=0: %s",escaped(orig_line));
@@ -442,7 +440,6 @@ measured_bw_line_parse(measured_bw_line_t *out, const char *orig_line,
         return -1;
       }
       got_bw=1;
-    // Allow node_id to start with or without the dollar sign.
     } else if (strcmpstart(cp, "node_id=") == 0) {
       if (got_node_id) {
         log_warn(LD_DIRSERV, "Double node_id= in bandwidth file line: %s",
@@ -457,7 +454,7 @@ measured_bw_line_parse(measured_bw_line_t *out, const char *orig_line,
       }
       if (strlen(cp) != HEX_DIGEST_LEN ||
           base16_decode(out->node_id, DIGEST_LEN,
-                        cp, HEX_DIGEST_LEN) != DIGEST_LEN) {
+                       cp, HEX_DIGEST_LEN) != DIGEST_LEN) {
         log_warn(LD_DIRSERV, "Invalid node_id in bandwidth file line: %s",
                  escaped(orig_line));
         tor_free(line);
@@ -472,8 +469,6 @@ measured_bw_line_parse(measured_bw_line_t *out, const char *orig_line,
     tor_free(line);
     return 0;
   } else if (line_is_after_headers == 0) {
-    /* There could be additional header lines, therefore do not give warnings
-     * but returns -1 since it's not a complete bw line. */
     log_debug(LD_DIRSERV, "Missing bw or node_id in bandwidth file line: %s",
              escaped(orig_line));
     tor_free(line);
