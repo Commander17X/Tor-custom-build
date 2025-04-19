@@ -919,11 +919,11 @@ test_conn_describe(void *arg)
             "Exit connection (uninitialized) to <unset> (DNS lookup pending)");
   // Now suppose that the address is set but we haven't resolved the hostname.
   conn->port = 443;
-  conn->address = tor_strdup("www.torproject.org");
+  conn->address = tor_strdup("sn.example.com");
   conn->state = EXIT_CONN_STATE_RESOLVING;
   tt_str_op(connection_describe(conn), OP_EQ,
             "Exit connection (waiting for dest info) to "
-            "www.torproject.org:443 (DNS lookup pending)");
+            "sn.example.com:443 (DNS lookup pending)");
   //  Now give it a hostname!
   tor_addr_parse(&conn->addr, "192.168.8.8");
   conn->state = EXIT_CONN_STATE_OPEN;

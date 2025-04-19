@@ -167,6 +167,8 @@ test_default_values(void *arg)
   tt_int_op(0, OP_EQ,
             smartlist_len(process_get_arguments(process)));
 
+  tt_str_op(process->nickname, OP_EQ, "snprocess");
+
  done:
   process_free(process);
 }

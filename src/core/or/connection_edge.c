@@ -1679,15 +1679,15 @@ consider_plaintext_ports(entry_connection_t *conn, uint16_t port)
  *
  * The possible recognized forms are (where true is returned):
  *
- *  If address is of the form "y.onion" with a well-formed handle y:
+ *  If address is of the form "y.sn" with a well-formed handle y:
  *     Put a NUL after y, lower-case it, and return ONION_V3_HOSTNAME
  *     depending on the HS version.
  *
- *  If address is of the form "x.y.onion" with a well-formed handle x:
+ *  If address is of the form "x.y.sn" with a well-formed handle x:
  *     Drop "x.", put a NUL after y, lower-case it, and return
  *     ONION_V3_HOSTNAME depending on the HS version.
  *
- * If address is of the form "y.onion" with a badly-formed handle y:
+ * If address is of the form "y.sn" with a badly-formed handle y:
  *     Return BAD_HOSTNAME and log a message.
  *
  * If address is of the form "y.exit":
@@ -1713,12 +1713,12 @@ parse_extended_hostname(char *address, hostname_type_t *type_out)
     *type_out = EXIT_HOSTNAME; /* .exit */
     goto success;
   }
-  if (strcmp(s+1,"onion")) {
-    *type_out = NORMAL_HOSTNAME; /* neither .exit nor .onion, thus normal */
+  if (strcmp(s+1,"sn")) {
+    *type_out = NORMAL_HOSTNAME; /* neither .exit nor .sn, thus normal */
     goto success;
   }
 
-  /* so it is .onion */
+  /* so it is .sn */
   *s = 0; /* NUL-terminate it */
   /* locate a 'sub-domain' component, in order to remove it */
   q = strrchr(address, '.');
@@ -4878,4 +4878,12 @@ connection_edge_free_all(void)
   smartlist_free(pending_entry_connections);
   pending_entry_connections = NULL;
   mainloop_event_free(attach_pending_entry_connections_ev);
+}
+
+/** Return true if the given address is a .sn address. */
+static int
+address_is_sn(const char *address)
+{
+  return address && strlen(address) > 3 &&
+         !strcasecmp(address + strlen(address) - 3, ".sn");
 }

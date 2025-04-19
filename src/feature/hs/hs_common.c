@@ -476,86 +476,68 @@ build_blinded_key_param(const ed25519_public_key_t *pubkey,
   memwipe(nonce, 0, sizeof(nonce));
 }
 
-/** Using an ed25519 public key and version to build the checksum of an
- * address. Put in checksum_out. Format is:
- *    SHA3-256(".onion checksum" || PUBKEY || VERSION)
- *
- * checksum_out must be large enough to receive 32 bytes (DIGEST256_LEN). */
+/** The prefix of the checksum that is used in the address. */
+#define HS_ADDRESS_CHECKSUM_PREFIX ".sn checksum"
+
+/** Using the given ed25519 public key, build the checksum of an address. The
+ * checksum is computed as:
+ *    SHA3-256(".sn checksum" || PUBKEY || VERSION)
+ */
 static void
-build_hs_checksum(const ed25519_public_key_t *key, uint8_t version,
-                  uint8_t *checksum_out)
+build_address_checksum(const uint8_t *key, uint8_t version,
+                      uint8_t *checksum_out)
 {
+  uint8_t checksum_input[HS_ADDRESS_CHECKSUM_INPUT_LEN];
   size_t offset = 0;
-  char data[HS_SERVICE_ADDR_CHECKSUM_INPUT_LEN];
 
-  /* Build checksum data. */
-  memcpy(data, HS_SERVICE_ADDR_CHECKSUM_PREFIX,
-         HS_SERVICE_ADDR_CHECKSUM_PREFIX_LEN);
-  offset += HS_SERVICE_ADDR_CHECKSUM_PREFIX_LEN;
-  memcpy(data + offset, key->pubkey, ED25519_PUBKEY_LEN);
+  /* Build checksum input. Format is:
+   *   CHECKSUM_PREFIX || PUBKEY || VERSION */
+  memcpy(checksum_input + offset, HS_ADDRESS_CHECKSUM_PREFIX,
+         HS_ADDRESS_CHECKSUM_PREFIX_LEN);
+  offset += HS_ADDRESS_CHECKSUM_PREFIX_LEN;
+  memcpy(checksum_input + offset, key, ED25519_PUBKEY_LEN);
   offset += ED25519_PUBKEY_LEN;
-  set_uint8(data + offset, version);
-  offset += sizeof(version);
-  tor_assert(offset == HS_SERVICE_ADDR_CHECKSUM_INPUT_LEN);
+  checksum_input[offset] = version;
 
-  /* Hash the data payload to create the checksum. */
-  crypto_digest256((char *) checksum_out, data, sizeof(data),
-                   DIGEST_SHA3_256);
+  /* Get the checksum */
+  crypto_digest256((char *) checksum_out, (const char *) checksum_input,
+                   HS_ADDRESS_CHECKSUM_INPUT_LEN, DIGEST_SHA3_256);
 }
 
-/** Using an ed25519 public key, checksum and version to build the binary
- * representation of a service address. Put in addr_out. Format is:
- *    addr_out = PUBKEY || CHECKSUM || VERSION
+/** Build a v3 onion address from the given components. The returned string is
+ * allocated on the heap and must be freed by the caller.
  *
- * addr_out must be large enough to receive HS_SERVICE_ADDR_LEN bytes. */
-static void
-build_hs_address(const ed25519_public_key_t *key, const uint8_t *checksum,
-                 uint8_t version, char *addr_out)
+ * Format is:
+ *    base32(PUBKEY || CHECKSUM || VERSION) + ".sn"
+ */
+char *
+hs_build_address(const ed25519_public_key_t *key, uint8_t version)
 {
+  char *address = NULL;
+  uint8_t checksum[DIGEST256_LEN];
+  uint8_t address_bin[HS_ADDRESS_BIN_LEN];
   size_t offset = 0;
 
   tor_assert(key);
-  tor_assert(checksum);
 
-  memcpy(addr_out, key->pubkey, ED25519_PUBKEY_LEN);
+  /* Get the checksum of the address. */
+  build_address_checksum(key->pubkey, version, checksum);
+
+  /* Build the binary representation that will be used for the encoding. */
+  memcpy(address_bin + offset, key->pubkey, ED25519_PUBKEY_LEN);
   offset += ED25519_PUBKEY_LEN;
-  memcpy(addr_out + offset, checksum, HS_SERVICE_ADDR_CHECKSUM_LEN_USED);
-  offset += HS_SERVICE_ADDR_CHECKSUM_LEN_USED;
-  set_uint8(addr_out + offset, version);
-  offset += sizeof(uint8_t);
-  tor_assert(offset == HS_SERVICE_ADDR_LEN);
-}
+  memcpy(address_bin + offset, checksum, HS_ADDRESS_CHECKSUM_LEN);
+  offset += HS_ADDRESS_CHECKSUM_LEN;
+  address_bin[offset] = version;
 
-/** Helper for hs_parse_address(): Using a binary representation of a service
- * address, parse its content into the key_out, checksum_out and version_out.
- * Any out variable can be NULL in case the caller would want only one field.
- * checksum_out MUST at least be 2 bytes long. address must be at least
- * HS_SERVICE_ADDR_LEN bytes but doesn't need to be NUL terminated. */
-static void
-hs_parse_address_impl(const char *address, ed25519_public_key_t *key_out,
-                      uint8_t *checksum_out, uint8_t *version_out)
-{
-  size_t offset = 0;
+  /* Encode the binary representation to a human readable format. */
+  address = tor_malloc_zero(HS_ADDRESS_LEN);
+  base32_encode(address, HS_ADDRESS_LEN, (const char *) address_bin,
+                HS_ADDRESS_BIN_LEN);
+  /* Add the suffix */
+  strlcat(address, ".sn", HS_ADDRESS_LEN);
 
-  tor_assert(address);
-
-  if (key_out) {
-    /* First is the key. */
-    memcpy(key_out->pubkey, address, ED25519_PUBKEY_LEN);
-  }
-  offset += ED25519_PUBKEY_LEN;
-  if (checksum_out) {
-    /* Followed by a 2 bytes checksum. */
-    memcpy(checksum_out, address + offset, HS_SERVICE_ADDR_CHECKSUM_LEN_USED);
-  }
-  offset += HS_SERVICE_ADDR_CHECKSUM_LEN_USED;
-  if (version_out) {
-    /* Finally, version value is 1 byte. */
-    *version_out = get_uint8(address + offset);
-  }
-  offset += sizeof(uint8_t);
-  /* Extra safety. */
-  tor_assert(offset == HS_SERVICE_ADDR_LEN);
+  return address;
 }
 
 /** Using the given identity public key and a blinded public key, compute the

@@ -1,0 +1,1 @@
+  tt_str_op(node->nickname, OP_EQ, "snnode"); 

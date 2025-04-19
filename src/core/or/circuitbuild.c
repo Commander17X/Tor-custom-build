@@ -1748,7 +1748,7 @@ choose_good_exit_server_general(router_crn_flags_t flags)
            n_pending_connections);
 
   /* If any routers definitely support any pending connections, choose one
-   * at random. */
+   * based on performance. */
   if (best_support > 0) {
     smartlist_t *supporting = smartlist_new();
 
@@ -1757,7 +1757,8 @@ choose_good_exit_server_general(router_crn_flags_t flags)
         smartlist_add(supporting, (void*)node);
     });
 
-    selected_node = node_sl_choose_by_bandwidth(supporting, WEIGHT_FOR_EXIT);
+    // Choose based on performance instead of just bandwidth
+    selected_node = node_choose_by_performance(supporting, WEIGHT_FOR_EXIT, NULL);
     smartlist_free(supporting);
   } else {
     /* Either there are no pending connections, or no routers even seem to
@@ -1796,7 +1797,7 @@ choose_good_exit_server_general(router_crn_flags_t flags)
         }
       } SMARTLIST_FOREACH_END(node);
 
-      selected_node = node_sl_choose_by_bandwidth(supporting, WEIGHT_FOR_EXIT);
+      selected_node = node_choose_by_performance(supporting, WEIGHT_FOR_EXIT, NULL);
       if (selected_node)
         break;
       smartlist_clear(supporting);
@@ -2420,7 +2421,9 @@ choose_good_middle_server(const origin_circuit_t * circ,
 
     smartlist_subtract(sl, excluded);
 
-    choice = node_sl_choose_by_bandwidth(sl, WEIGHT_FOR_MID);
+    // Choose based on performance instead of just bandwidth
+    // Pass 'head' which points to the path built so far (relative_to_hop)
+    choice = node_choose_by_performance(sl, WEIGHT_FOR_MID, head);
     smartlist_free(sl);
     if (choice) {
       log_fn(LOG_INFO, LD_CIRC, "Chose fixed middle node: %s",
@@ -2429,6 +2432,8 @@ choose_good_middle_server(const origin_circuit_t * circ,
       log_fn(LOG_NOTICE, LD_CIRC, "Restricted middle not available");
     }
   } else {
+    // TODO: router_choose_random_node also uses bandwidth weighting internally.
+    // Ideally, this should also be adapted for performance-based selection.
     choice = router_choose_random_node(excluded, options->ExcludeNodes, flags);
   }
   smartlist_free(excluded);
@@ -2647,4 +2652,43 @@ client_circ_negotiation_message(const extend_info_t *ei,
   }
 
   return congestion_control_build_ext_request(msg_out, msg_len_out);
+}
+
+/**
+ * Helper: Choose a node from the smartlist 'nodes' based on measured
+ * performance (latency, stability, throughput) relative to relative_to_hop,
+ * combined with consensus bandwidth according to the weighting rule 'rule'.
+ *
+ * TODO: Implement actual performance-based weighting. Currently uses
+ * consensus bandwidth weighting as a placeholder.
+ */
+static const node_t *
+node_choose_by_performance(const smartlist_t *nodes, weight_rule_t rule,
+                           const crypt_path_t *relative_to_hop)
+{
+  /*
+   * TODO - Full Implementation Steps:
+   * 1. Iterate through 'nodes'.
+   * 2. For each node:
+   *    a. Retrieve consensus bandwidth weight (already implicitly handled by
+   *       existing weighting functions, but could be explicit factor).
+   *    b. Retrieve performance metrics using a (hypothetical) function like:
+   *       performance_metrics_t metrics = get_node_performance_metrics(node, relative_to_hop);
+   *       (This would ideally get recent latency, stability/success rate, etc.)
+   *    c. Calculate a combined performance_score based on bandwidth, latency,
+   *       stability, congestion, etc. Needs normalization and weighting.
+   * 3. Create a list of nodes paired with their scores.
+   * 4. Perform weighted random selection based on scores using a
+   *    (hypothetical) function like:
+   *       return node_sl_choose_by_performance_score(nodes_with_scores);
+   *
+   * 5. Ensure sufficient randomness is maintained to avoid over-concentration.
+   */
+
+  // Placeholder: Use existing bandwidth-weighted selection for now.
+  // Remove this (void) line when relative_to_hop is used for real metrics.
+  (void)relative_to_hop; // Avoid unused parameter warning for now
+  log_debug(LD_CIRC, "Choosing node using placeholder performance selection" 
+                     " (currently bandwidth-weighted).");
+  return node_sl_choose_by_bandwidth(nodes, rule);
 }

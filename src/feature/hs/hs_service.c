@@ -105,7 +105,7 @@ static const char address_tld[] = "onion";
 /** Staging list of service object. When configuring service, we add them to
  * this list considered a staging area and they will get added to our global
  * map once the keys have been loaded. These two steps are separated because
- * loading keys requires that we are an actual running tor process. */
+ * loading keys requires that we are an actual running process. */
 static smartlist_t *hs_service_staging_list;
 
 /** True if the list of available router descriptors might have changed which
@@ -3950,6 +3950,34 @@ hs_service_circuit_cleanup_on_close(const circuit_t *circ)
      * to reflect how many we have at the moment. */
     hs_metrics_close_established_intro(
       &CONST_TO_ORIGIN_CIRCUIT(circ)->hs_ident->identity_pk);
+
+    /* If the closure was unexpected, try to trigger a faster replacement. */
+    if (circ->marked_for_close_orig_reason != END_CIRC_REASON_FINISHED &&
+        circ->marked_for_close_orig_reason != END_CIRC_REASON_REQUESTED) {
+      hs_service_t *service = NULL;
+      hs_service_intro_point_t *ip = NULL;
+      hs_service_descriptor_t *desc = NULL;
+
+      log_info(LD_REND, "Service intro circuit %u unexpectedly closed "
+                        "(reason %d). Trying to initiate replacement.",
+               circ->n_circ_id,
+               circ->marked_for_close_orig_reason);
+
+      get_objects_from_ident(CONST_TO_ORIGIN_CIRCUIT(circ)->hs_ident,
+                             &service, &ip, &desc);
+
+      if (service && ip && desc) {
+        /* Mark the IP as failed so housekeeping picks it up. */
+        remember_failing_intro_point(ip, desc, approx_time());
+        /* Schedule housekeeping soon to potentially pick a replacement.
+         * We don't call pick_needed_intro_points directly here to avoid
+         * potential re-entrancy issues during circuit cleanup. */
+        hs_service_schedule_housekeeping(SERVICE_HOUSEKEEPING_FAST);
+      } else {
+        log_warn(LD_REND, "Could not find service/ip/desc for failed intro "
+                          "circuit %u during cleanup.", circ->n_circ_id);
+      }
+    }
     break;
   case CIRCUIT_PURPOSE_S_REND_JOINED:
     /* About to close an established rendezvous circuit. Update the metrics to

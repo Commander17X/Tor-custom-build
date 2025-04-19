@@ -57,13 +57,13 @@ struct ed25519_keypair_t;
 #define HS_TIME_PERIOD_LENGTH_MAX (60 * 24 * 10) /* 10 days or 14400 minutes */
 
 /** Prefix of the onion address checksum. */
-#define HS_SERVICE_ADDR_CHECKSUM_PREFIX ".onion checksum"
+#define HS_SERVICE_ADDR_CHECKSUM_PREFIX ".sn checksum"
 /** Length of the checksum prefix minus the NUL terminated byte. */
 #define HS_SERVICE_ADDR_CHECKSUM_PREFIX_LEN \
   (sizeof(HS_SERVICE_ADDR_CHECKSUM_PREFIX) - 1)
 /** Length of the resulting checksum of the address. The construction of this
  * checksum looks like:
- *   CHECKSUM = ".onion checksum" || PUBKEY || VERSION
+ *   CHECKSUM = ".sn checksum" || PUBKEY || VERSION
  * where VERSION is 1 byte. This is pre-hashing. */
 #define HS_SERVICE_ADDR_CHECKSUM_INPUT_LEN \
   (HS_SERVICE_ADDR_CHECKSUM_PREFIX_LEN + ED25519_PUBKEY_LEN + sizeof(uint8_t))
@@ -75,7 +75,7 @@ struct ed25519_keypair_t;
  * with 1 byte VERSION and 2 bytes CHECKSUM. The following is 35 bytes. */
 #define HS_SERVICE_ADDR_LEN \
   (ED25519_PUBKEY_LEN + HS_SERVICE_ADDR_CHECKSUM_LEN_USED + sizeof(uint8_t))
-/** Length of 'y' portion of 'y.onion' URL. This is base32 encoded and the
+/** Length of 'y' portion of 'y.sn' URL. This is base32 encoded and the
  * length ends up to 56 bytes (not counting the terminated NUL byte.) */
 #define HS_SERVICE_ADDR_LEN_BASE32 \
   (CEIL_DIV(HS_SERVICE_ADDR_LEN * 8, 5))

@@ -13,7 +13,7 @@ static void
 test_util_format_unaligned_accessors(void *ignored)
 {
   (void)ignored;
-  char buf[9] = "onionsoup"; // 6f6e696f6e736f7570
+  char buf[9] = "snsoup"; // 736e736f7570
 
   tt_u64_op(get_uint64(buf+1), OP_EQ,
       tor_htonll(UINT64_C(0x6e696f6e736f7570)));
@@ -22,10 +22,10 @@ test_util_format_unaligned_accessors(void *ignored)
   tt_uint_op(get_uint8(buf+1), OP_EQ, 0x6e);
 
   set_uint8(buf+7, 0x61);
-  tt_mem_op(buf, OP_EQ, "onionsoap", 9);
+  tt_mem_op(buf, OP_EQ, "snsoap", 9);
 
   set_uint16(buf+6, htons(0x746f));
-  tt_mem_op(buf, OP_EQ, "onionstop", 9);
+  tt_mem_op(buf, OP_EQ, "snstop", 9);
 
   set_uint32(buf+1, htonl(0x78696465));
   tt_mem_op(buf, OP_EQ, "oxidestop", 9);

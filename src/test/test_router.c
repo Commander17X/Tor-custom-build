@@ -52,7 +52,7 @@ rtr_tests_gen_routerinfo(crypto_pk_t *ident_key, crypto_pk_t *tap_key)
   tor_assert(tap_key != NULL);
 
   mock_routerinfo = tor_malloc_zero(sizeof(routerinfo_t));
-  mock_routerinfo->nickname = tor_strdup("ConlonNancarrow");
+  mock_routerinfo->nickname = tor_strdup("snrouter");
   tor_addr_from_ipv4h(&mock_routerinfo->ipv4_addr, 123456789);
   mock_routerinfo->ipv4_orport = 443;
   mock_routerinfo->platform = tor_strdup("unittest");

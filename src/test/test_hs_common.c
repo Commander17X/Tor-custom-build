@@ -1916,6 +1916,30 @@ test_client_service_hsdir_set_sync(void *arg)
   hs_free_all();
 }
 
+static void
+test_hs_address(void *arg)
+{
+  char *address = NULL;
+  ed25519_public_key_t pubkey;
+
+  (void) arg;
+
+  /* Test valid address. */
+  memset(&pubkey, 0, sizeof(pubkey));
+  address = hs_build_address(&pubkey, HS_VERSION_THREE);
+  tt_assert(address);
+  tt_str_op(address + strlen(address) - 3, OP_EQ, ".sn");
+  tor_free(address);
+
+  /* Test invalid address. */
+  address = tor_strdup("invalid.sn");
+  tt_int_op(hs_address_is_valid(address), OP_EQ, 0);
+  tor_free(address);
+
+ done:
+  tor_free(address);
+}
+
 struct testcase_t hs_common_tests[] = {
   { "blinding_basics", test_blinding_basics, TT_FORK, NULL, NULL },
   { "build_address", test_build_address, TT_FORK,
@@ -1943,6 +1967,8 @@ struct testcase_t hs_common_tests[] = {
   { "client_service_hsdir_set_sync", test_client_service_hsdir_set_sync,
     TT_FORK, NULL, NULL },
   { "hs_indexes", test_hs_indexes, TT_FORK,
+    NULL, NULL },
+  { "hs_address", test_hs_address, TT_FORK,
     NULL, NULL },
 
   END_OF_TESTCASES

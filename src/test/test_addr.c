@@ -255,7 +255,7 @@ test_addr_ip6_helpers(void *arg)
   tt_int_op(r, OP_EQ, 1);
   for (i=0;i<16;++i) { tt_int_op(i+1,OP_EQ, (int)a1.s6_addr[i]); }
   /* ipv4 ending. */
-  test_pton6_same("0102:0304:0506:0708:090A:0B0C:0D0E:0F10",
+  test_pton6_same("0102:0304:0506:0708:090A:0B0C:13.14.15.16",
                   "0102:0304:0506:0708:090A:0B0C:13.14.15.16");
   /* shortened words. */
   test_pton6_same("0001:0099:BEEF:0000:0123:FFFF:0001:0001",
@@ -1276,6 +1276,17 @@ test_addr_parse(void *arg)
   TEST_ADDR_V6_PORT_PARSE("[11:22::88]:99",
                            "11:22::88",99);
 
+  tt_assert(!strcasecmpend(
+            tor_strdup("wumble.sn")));
+  tt_assert(!strcasecmpend(
+            tor_strdup("wumpus.sn")));
+
+  tt_assert(!strcasecmpend(
+            tor_strdup("might-work.sn")));
+
+  tt_assert(!strcasecmpend(
+            tor_strdup("wont-work.sn")));
+
  done:
   unmock_hostname_resolver();
 }
@@ -1413,9 +1424,9 @@ test_virtaddrmap_persist(void *data)
   testing_enable_prefilled_rng(canned_data, canned_data_len);
 
   a = addressmap_register_virtual_address(RESOLVED_TYPE_IPV4,
-                                          tor_strdup("wumble.onion"));
+                                          tor_strdup("wumble.sn"));
   b = addressmap_register_virtual_address(RESOLVED_TYPE_IPV4,
-                                          tor_strdup("wumpus.onion"));
+                                          tor_strdup("wumpus.sn"));
   tt_str_op(a, OP_EQ, "192.168.3.4");
   tt_str_op(b, OP_EQ, "192.168.7.240");
   testing_disable_prefilled_rng();
@@ -1467,7 +1478,7 @@ test_virtaddrmap_persist(void *data)
   // There is some chance this one will fail if a previous random
   // allocation gave out the address already.
   a = addressmap_register_virtual_address(RESOLVED_TYPE_IPV4,
-                                          tor_strdup("might-work.onion"));
+                                          tor_strdup("might-work.sn"));
   if (a) {
     tt_str_op(a, OP_EQ, "192.168.1.1");
   }
@@ -1475,7 +1486,7 @@ test_virtaddrmap_persist(void *data)
   // This one will definitely fail, since we've set up the RNG to hand
   // out "1" forever.
   b = addressmap_register_virtual_address(RESOLVED_TYPE_IPV4,
-                                          tor_strdup("wont-work.onion"));
+                                          tor_strdup("wont-work.sn"));
   tt_assert(b == NULL);
   expect_single_log_msg_containing("Ran out of virtual addresses!");
 

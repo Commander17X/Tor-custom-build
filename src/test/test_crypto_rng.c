@@ -43,9 +43,9 @@ test_crypto_rng(void *arg)
     d = crypto_rand_double();
     tt_assert(d >= 0);
     tt_assert(d < 1.0);
-    host = crypto_random_hostname(3,8,"www.",".onion");
+    host = crypto_random_hostname(3,8,"www.",".sn");
     if (strcmpstart(host,"www.") ||
-        strcmpend(host,".onion") ||
+        strcmpend(host,".sn") ||
         strlen(host) < 13 ||
         strlen(host) > 18)
       allok = 0;
@@ -53,9 +53,9 @@ test_crypto_rng(void *arg)
   }
 
   /* Make sure crypto_random_hostname clips its inputs properly. */
-  h = crypto_random_hostname(20000, 9000, "www.", ".onion");
+  h = crypto_random_hostname(20000, 9000, "www.", ".sn");
   tt_assert(! strcmpstart(h,"www."));
-  tt_assert(! strcmpend(h,".onion"));
+  tt_assert(! strcmpend(h,".sn"));
   tt_int_op(63+4+6, OP_EQ, strlen(h));
 
   tt_assert(allok);

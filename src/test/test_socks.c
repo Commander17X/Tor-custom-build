@@ -865,7 +865,7 @@ test_socks_truncated(void *ptr)
     /* Socks5, hostname, empty. */
     { ALL, "\x05\x01\x00\x03" "\x00" "\x00\x50", 7 },
     /* Socks5, hostname, moderate. */
-    { ALL, "\x05\x01\x00\x03" "\x11" "onion.example.com" "\x00\x50", 24 },
+    { ALL, "\x05\x01\x00\x03" "\x11" "sn.example.com" "\x00\x50", 24 },
     /* Socks5, hostname, maximum. */
     { ALL, "\x05\x01\x00\x03" "\xff"
       "whatsoever.I.shall.see.or.hear.in.the.course.of.my.profession.as.well."

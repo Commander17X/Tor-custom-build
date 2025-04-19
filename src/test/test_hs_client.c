@@ -119,7 +119,7 @@ static void
 helper_add_random_client_auth(const ed25519_public_key_t *service_pk)
 {
   char *conf = NULL;
-#define conf_fmt "ClientOnionAuthDir %s\n"
+#define conf_fmt "ClientSnAuthDir %s\n"
   tor_asprintf(&conf, conf_fmt, get_fname("auth_keys"));
 #undef conf_fmt
   helper_config_client(conf, 0);
@@ -598,6 +598,15 @@ test_auth_key_filename_is_valid(void *arg)
   /* Nothing before the extension. */
   tt_assert(!auth_key_filename_is_valid(".auth_private"));
 
+  tt_assert(!strcasecmpend(
+            tor_strdup("wumble.sn")));
+  tt_assert(!strcasecmpend(
+            tor_strdup("wumpus.sn")));
+  tt_assert(!strcasecmpend(
+            tor_strdup("might-work.sn")));
+  tt_assert(!strcasecmpend(
+            tor_strdup("wont-work.sn")));
+
  done:
   ;
 }
@@ -714,7 +723,7 @@ test_config_client_authorization(void *arg)
   MOCK(check_private_dir, mock_check_private_dir);
 
 #define conf_fmt \
-  "ClientOnionAuthDir %s\n"
+  "ClientSnAuthDir %s\n"
 
   tor_asprintf(&conf, conf_fmt, key_dir);
   ret = helper_config_client(conf, 0);
@@ -757,7 +766,7 @@ static void
 test_desc_has_arrived_cleanup(void *arg)
 {
   /* The goal of this test is to make sure we clean up everything in between
-   * two descriptors from the same .onion. Because intro points can change
+   * two descriptors from the same .sn. Because intro points can change
    * from one descriptor to another, once we received a new descriptor, we
    * need to cleanup the remaining circuits so they aren't used or selected
    * when establishing a connection with the newly stored descriptor.
@@ -791,7 +800,7 @@ test_desc_has_arrived_cleanup(void *arg)
   parse_rfc1123_time("Sat, 26 Oct 1985 14:00:00 UTC", &mock_ns.fresh_until);
   parse_rfc1123_time("Sat, 26 Oct 1985 16:00:00 UTC", &mock_ns.valid_until);
 
-  /* Build a descriptor for a specific .onion. */
+  /* Build a descriptor for a specific .sn. */
   ret = ed25519_keypair_generate(&signing_kp, 0);
   tt_int_op(ret, OP_EQ, 0);
   desc = hs_helper_build_hs_desc_with_ip(&signing_kp);
@@ -806,7 +815,7 @@ test_desc_has_arrived_cleanup(void *arg)
   tt_assert(cached_desc);
   hs_helper_desc_equal(desc, cached_desc);
 
-  /* Create two SOCKS connection for the same .onion both in the waiting for a
+  /* Create two SOCKS connection for the same .sn both in the waiting for a
    * descriptor state. */
   socks1 = helper_build_socks_connection(&signing_kp.pubkey,
                                          AP_CONN_STATE_RENDDESC_WAIT);
@@ -1383,7 +1392,7 @@ test_purge_ephemeral_client_auth(void *arg)
   /* Bogus directory so when we try to write the permanent client
    * authorization data to disk, we don't fail. See
    * store_permanent_client_auth_credentials() for more details. */
-  mocked_options.ClientOnionAuthDir = tor_strdup("auth_dir");
+  mocked_options.ClientSnAuthDir = tor_strdup("auth_dir");
 
   hs_init();
 
@@ -1438,7 +1447,7 @@ test_purge_ephemeral_client_auth(void *arg)
  done:
   client_service_authorization_free(auth);
   hs_free_all();
-  tor_free(mocked_options.ClientOnionAuthDir);
+  tor_free(mocked_options.ClientSnAuthDir);
 
   UNMOCK(check_private_dir);
   UNMOCK(get_options);
