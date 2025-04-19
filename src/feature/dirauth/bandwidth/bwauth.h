@@ -19,7 +19,6 @@
 #define MAX_MEASUREMENT_AGE (24*60*60)  /* 24 hours */
 #define MAX_BW_FILE_HEADER_COUNT_IN_VOTE 10
 #define BW_FILE_HEADERS_TERMINATOR "-----END BW MEASUREMENT-----"
-#define MAX_HEX_NICKNAME_LEN 50
 
 /* Structure for measured bandwidth line */
 typedef struct measured_bw_line_t {

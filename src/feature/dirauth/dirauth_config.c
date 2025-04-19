@@ -104,8 +104,7 @@ options_validate_dirauth_mode(const or_options_t *old_options,
 
   /* If we have a v3bandwidthsfile and it's broken, complain on startup */
   if (options->V3BandwidthsFile && !old_options) {
-    dirserv_read_measured_bandwidths(options->V3BandwidthsFile, NULL, NULL,
-                                     NULL);
+    dirserv_read_measured_bandwidths(options->V3BandwidthsFile, NULL, NULL);
   }
   /* same for guardfraction file */
   if (options->GuardfractionFile && !old_options) {
