@@ -16,8 +16,10 @@ sudo make install
 sudo cp src/config/torrc.sample /etc/tor/torrc
 
 # Set proper permissions
-sudo chown -R debian-tor:debian-tor /var/lib/tor
-sudo chown -R debian-tor:debian-tor /var/log/tor
+# Use the current user instead of debian-tor
+CURRENT_USER=$(whoami)
+sudo chown -R $CURRENT_USER:$CURRENT_USER /var/lib/tor
+sudo chown -R $CURRENT_USER:$CURRENT_USER /var/log/tor
 sudo chmod 700 /var/lib/tor
 sudo chmod 700 /var/log/tor
 
