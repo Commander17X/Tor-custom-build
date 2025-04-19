@@ -88,6 +88,7 @@ To make it easier to read and write code in VS Code, we have a configuration fil
 * Enhanced directory authority bandwidth management
 * Improved hidden service performance and security
 * Added new testing framework for network components
+* Integrated SN Network Website Manager with Tor support
 
 ### More Information
 
