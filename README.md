@@ -1,81 +1,106 @@
-# Tor Custom Build: Geoptimaliseerd voor Hosting en .SN Netwerken
+# Tor Custom Build / Tor Aangepaste Versie
 
-Hoi ontwikkelaar! Deze README legt een beetje uit hoe dit Tor project in elkaar zit en hoe je ermee aan de slag kunt op je Windows machine.
+[English](#english) | [Nederlands](#nederlands)
 
-## Wat is dit?
+## English <a name="english"></a>
 
-Dit is een **aangepaste versie (fork)** van de Tor broncode. Terwijl de originele Tor focust op algemene anonimiteit, is deze fork specifiek aangepast en geoptimaliseerd met de volgende doelen:
+### What is this?
 
-*   **Verbeterde Hostability:** Stabieler en efficiënter maken van het hosten van services (met name Hidden Services) op het netwerk.
-*   **Hogere Snelheid:** Optimalisaties voor snellere verbindingen en reactietijden binnen het netwerk.
-*   **Integratie met .SN Netwerken:** Specifieke aanpassingen voor betere werking en interactie binnen aangepaste `.sn` netwerkomgevingen.
-*   **Verhoogde Veiligheid:** Extra maatregelen en aangescherpte logica om de veiligheid te verbeteren.
+This is a **custom version (fork)** of the Tor source code. While the original Tor focuses on general anonymity, this fork is specifically adapted and optimized for:
 
-De basisfunctionaliteit van Tor (anonimiteit via gelaagde encryptie en relays) blijft behouden, maar met deze specifieke verbeteringen.
+* **Improved Hostability:** More stable and efficient hosting of services (especially Hidden Services) on the network.
+* **Higher Speed:** Optimizations for faster connections and response times within the network.
+* **.SN Network Integration:** Specific adaptations for better operation and interaction within custom `.sn` network environments.
+* **Enhanced Security:** Additional measures and refined logic to improve security.
 
-## Mappenstructuur (Waar vind ik wat?)
+The basic functionality of Tor (anonymity via layered encryption and relays) is preserved, but with these specific improvements.
 
-De code is opgedeeld in verschillende mappen in de `src` map:
+### New Features: Website Manager
 
-*   `src/core`: De echte kern van Tor, zoals netwerkverbindingen en circuits bouwen.
-*   `src/feature`: Specifieke features zoals hidden services (`hs`), directory authorities, etc.
-*   `src/lib`: Algemene hulpfuncties en bibliotheken die overal gebruikt worden.
-*   `src/app`: Code specifiek voor de Tor applicatie zelf.
-*   `src/ext`: Externe libraries waar Tor van afhankelijk is.
-*   `src/trunnel`: Code voor het parsen van Tor's cellen (de data pakketjes).
-*   `src/tools`: Handige tools voor ontwikkeling of beheer.
-*   `src/test`: Unit tests en integratie tests.
-*   `src/win32`: Specifieke code voor Windows.
-
-## Code Bouwen (Compileren)
-
-Om de code te kunnen draaien of testen, moet je het eerst compileren. Op Windows gebruiken we hiervoor meestal:
-
-1.  **MSYS2 met MinGW-w64**: Dit geeft je een Linux-achtige omgeving en de `gcc` compiler. Zorg dat je dit geïnstalleerd hebt.
-2.  **Build Tools**: Je hebt ook dingen als `make`, `automake`, `autoconf` nodig. Installeer die via de MSYS2 package manager (`pacman`).
-3.  **Afhankelijkheden**: Tor heeft externe libraries nodig (zoals OpenSSL, Libevent, zlib). Installeer deze ook via `pacman` (de `mingw-w64-x86_64-...` versies).
-
-**Belangrijk:** Tijdens het bouwproces wordt een bestand `orconfig.h` gemaakt. Dit bestand bevat configuratie-instellingen die specifiek zijn voor jouw systeem en build. Veel andere bestanden hebben dit nodig (`#include "orconfig.h"`). **Zonder een succesvolle build zal je linter (en de compiler) veel fouten geven omdat dit bestand mist!**
-
-De typische stappen om te builden (uitgevoerd in de MSYS2 MinGW 64-bit shell) zijn:
+A powerful tool for hosting websites on the .sn network with Tor integration:
 
 ```bash
-./autogen.sh  # Maakt de configure script aan (alleen de eerste keer nodig)
-./configure   # Checkt je systeem en stelt de build in
-make          # Compileert de code
+# Create a new website
+sudo sn_website_manager create mijnsite
+
+# The website will be available at:
+# - http://mijnsite.<onion-address>.sn
+# - http://<onion-address>.onion
 ```
 
-Kijk in de officiële Tor documentatie voor de exacte commando's en benodigde packages.
+Features:
+- Virtual hosting with .sn domains
+- Automatic Tor hidden service setup
+- DDoS protection
+- Automatic port configuration
+- Nginx reverse proxy
+- Comprehensive logging
 
-## Ontwikkelen met VS Code (Linting & IntelliSense)
+See [Website Manager Documentation](#website-manager) for details.
 
-Om het makkelijker te maken om de code te lezen en te schrijven in VS Code, hebben we een configuratiebestand: `.vscode/c_cpp_properties.json`.
+### Directory Structure
 
-*   **Wat doet het?** Dit bestand vertelt de C/C++ extensie van VS Code waar het de `#include` bestanden (zoals `orconfig.h` en andere Tor headers) kan vinden.
-*   **Waarom?** Zonder dit weet VS Code niet waar alle functies en types gedefinieerd zijn, en krijg je rode golfjes (linting errors) en werkt auto-aanvullen (IntelliSense) niet goed.
-*   **Instellingen:**
-    *   `includePath`: Hier staan alle mappen waar VS Code moet zoeken naar header files.
-    *   `compilerPath`: Verwijst naar de `gcc.exe` compiler in je MSYS2 installatie. Controleer of dit pad klopt voor jouw systeem.
-    *   `intelliSenseMode`: Staat ingesteld op `windows-gcc-x64` omdat we met GCC via MSYS2 werken.
+The code is organized in different directories within the `src` folder:
 
-**Onthoud:** Zelfs met de juiste VS Code configuratie, moet je nog steeds de code **eerst succesvol builden** zodat `orconfig.h` bestaat, anders blijven de include-fouten bestaan. Herstart VS Code soms na het builden of na het aanpassen van `c_cpp_properties.json`.
+* `src/core`: The core of Tor, handling network connections and circuit building.
+* `src/feature`: Specific features like hidden services (`hs`), directory authorities, etc.
+* `src/lib`: General utility functions and libraries used throughout.
+* `src/app`: Code specific to the Tor application itself.
+* `src/ext`: External libraries that Tor depends on.
+* `src/trunnel`: Code for parsing Tor's cells (data packets).
+* `src/tools`: Useful tools for development or management.
+* `src/test`: Unit tests and integration tests.
+* `src/win32`: Windows-specific code.
 
-## Meer Info
+### Building the Code
 
-*   Check de officiële Tor documentatie voor de meest up-to-date build instructies en diepere uitleg.
-*   Verken de `src` map om te zien hoe de verschillende onderdelen samenwerken.
+To run or test the code, you need to compile it first. On Windows, we typically use:
 
-Veel succes met ontwikkelen!
+1. **MSYS2 with MinGW-w64**: This provides a Linux-like environment and the `gcc` compiler.
+2. **Build Tools**: You'll need tools like `make`, `automake`, `autoconf`. Install these via the MSYS2 package manager (`pacman`).
+3. **Dependencies**: Tor requires external libraries (like OpenSSL, Libevent, zlib). Install these via `pacman` (the `mingw-w64-x86_64-...` versions).
 
-Tor protects your privacy on the internet by hiding the connection between
-your Internet address and the services you use. We believe Tor is reasonably
-secure, but please ensure you read the instructions and configure it properly.
+**Important:** During the build process, an `orconfig.h` file is generated. This file contains configuration settings specific to your system and build. Many other files need this (`#include "orconfig.h"`). **Without a successful build, your linter (and compiler) will show many errors because this file is missing!**
 
-## Build
+Typical build steps (executed in the MSYS2 MinGW 64-bit shell):
 
-To build Tor from source:
-
+```bash
+./autogen.sh  # Creates the configure script (only needed first time)
+./configure   # Checks your system and sets up the build
+make          # Compiles the code
 ```
+
+### Development with VS Code
+
+To make it easier to read and write code in VS Code, we have a configuration file: `.vscode/c_cpp_properties.json`.
+
+* **What it does:** This file tells the C/C++ extension where to find `#include` files (like `orconfig.h` and other Tor headers).
+* **Settings:**
+    * `includePath`: Lists all directories where VS Code should look for header files.
+    * `compilerPath`: Points to the `gcc.exe` compiler in your MSYS2 installation.
+    * `intelliSenseMode`: Set to `windows-gcc-x64` since we're using GCC via MSYS2.
+
+**Remember:** Even with the correct VS Code configuration, you still need to **successfully build** the code first so that `orconfig.h` exists, otherwise include errors will persist.
+
+### Recent Updates
+
+* Added secure server setup script with improved logging and backup functionality
+* Enhanced directory authority bandwidth management
+* Improved hidden service performance and security
+* Added new testing framework for network components
+
+### More Information
+
+* Check the official Tor documentation for the most up-to-date build instructions and deeper explanations.
+* Explore the `src` directory to see how different components work together.
+
+## Nederlands <a name="nederlands"></a>
+
+### Wat is dit?
+
+Dit is een **aangepaste versie (fork)** van de Tor broncode. Terwijl de originele Tor focust op algemene anonimiteit, is deze fork specifiek aangepast en geoptimaliseerd voor:
+
+```bash
 ./configure
 make
 make install
@@ -200,4 +225,384 @@ Naast de setup voor de ontwikkelomgeving, bevat deze versie van de Tor-code ook 
 
 Deze aanpassingen zijn bedoeld om deze specifieke Tor-implementatie robuuster en efficiënter te maken dan de standaardversie.
 
- 
+# SN Network Website Manager
+
+Een geavanceerde website manager voor het .sn netwerk, geïntegreerd met Tor voor maximale privacy en veiligheid.
+
+## Functies
+
+- **Virtual Hosting**: Host meerdere websites op het .sn netwerk
+- **Automatische Configuratie**: 
+  - Willekeurige poorten voor elke website
+  - Automatische Nginx configuratie
+  - Tor hidden service integratie
+- **DDoS Bescherming**:
+  - Rate limiting
+  - Verbindingslimieten
+  - Firewall regels
+  - Caching van statische bestanden
+- **Privacy & Veiligheid**:
+  - Tor hidden services
+  - Versleutelde communicatie
+  - Geïsoleerde omgevingen
+  - Uitgebreide logging
+
+## Vereisten
+
+- Linux systeem (Ubuntu/Debian aanbevolen)
+- Nginx
+- Tor
+- iptables
+- Root toegang
+
+## Installatie
+
+1. Compileer de website manager:
+```bash
+cd src/tools
+make clean
+make
+sudo cp sn_website_manager /usr/local/bin/
+```
+
+2. Installeer benodigde dependencies:
+```bash
+sudo apt-get update
+sudo apt-get install nginx tor iptables
+```
+
+3. Configureer Tor voor hidden services:
+```bash
+sudo mkdir -p /var/lib/tor/hidden_service
+sudo chown debian-tor:debian-tor /var/lib/tor/hidden_service
+```
+
+## Gebruik
+
+### Een nieuwe website maken
+
+```bash
+sudo sn_website_manager create mijnsite
+```
+
+Dit zal:
+1. Een beschikbare poort vinden
+2. Een Tor hidden service configureren
+3. Nginx configuratie aanmaken
+4. DDoS bescherming instellen
+5. De website starten
+
+### Website beheren
+
+```bash
+# Website starten
+sudo sn_website_manager start mijnsite
+
+# Website stoppen
+sudo sn_website_manager stop mijnsite
+
+# Website automatisch starten bij boot
+sudo sn_website_manager enable mijnsite
+
+# Website uitschakelen bij boot
+sudo sn_website_manager disable mijnsite
+
+# Website status bekijken
+sudo sn_website_manager status mijnsite
+
+# Alle websites bekijken
+sudo sn_website_manager list
+```
+
+## Architectuur
+
+### Tor Integratie
+
+Elke website wordt gehost als een Tor hidden service:
+- Automatische .onion adres generatie
+- Versleutelde communicatie
+- Anonieme toegang
+- Geïsoleerde netwerk stack
+
+### Netwerk Structuur
+
+```
+[Tor Network]
+    |
+    v
+[Tor Hidden Service]
+    |
+    v
+[Nginx Reverse Proxy]
+    |
+    v
+[Website Manager]
+    |
+    v
+[Individuele Websites]
+```
+
+### Beveiliging
+
+1. **Netwerk Laag**:
+   - Tor hidden services
+   - Firewall regels
+   - Rate limiting
+   - Verbindingslimieten
+
+2. **Applicatie Laag**:
+   - Geïsoleerde processen
+   - Beperkte gebruikersrechten
+   - Uitgebreide logging
+   - Automatische updates
+
+3. **Data Laag**:
+   - Versleutelde opslag
+   - Backups
+   - Geïsoleerde bestandssystemen
+
+## Bestanden & Directories
+
+- `/var/www/sn/` - Website bestanden
+- `/etc/sn/websites/` - Website configuraties
+- `/etc/nginx/conf.d/` - Nginx configuraties
+- `/var/log/sn/websites/` - Log bestanden
+- `/etc/sn/firewall.rules` - Firewall regels
+- `/var/lib/tor/hidden_service/` - Tor hidden services
+
+## Troubleshooting
+
+### Veelvoorkomende problemen
+
+1. **Poort conflicten**:
+   ```bash
+   sudo netstat -tulpn | grep LISTEN
+   ```
+
+2. **Nginx fouten**:
+   ```bash
+   sudo nginx -t
+   sudo tail -f /var/log/nginx/error.log
+   ```
+
+3. **Tor problemen**:
+   ```bash
+   sudo systemctl status tor
+   sudo tail -f /var/log/tor/log
+   ```
+
+### Logging
+
+- Website logs: `/var/log/sn/websites/[website].log`
+- Nginx logs: `/var/log/nginx/`
+- Tor logs: `/var/log/tor/log`
+- Systeem logs: `/var/log/syslog`
+
+## Ontwikkeling
+
+### Code Structuur
+
+```
+src/
+  tools/
+    sn_website_manager.c  # Hoofd programma
+    Makefile             # Compilatie configuratie
+```
+
+### Bijdragen
+
+1. Fork de repository
+2. Maak een feature branch
+3. Commit je wijzigingen
+4. Push naar de branch
+5. Maak een pull request
+
+## Licentie
+
+GNU General Public License v3.0
+
+## Contact
+
+Voor vragen of problemen:
+- Issue tracker: [GitHub Issues](https://github.com/your-repo/issues)
+- Email: support@sn.network
+
+## Website Manager <a name="website-manager"></a>
+
+### Overview
+
+The SN Network Website Manager is a powerful tool for hosting websites on the .sn network with full Tor integration. It provides:
+
+- Virtual hosting with .sn domains
+- Automatic Tor hidden service setup
+- DDoS protection
+- Automatic port configuration
+- Nginx reverse proxy
+- Comprehensive logging
+
+### Installation
+
+1. Compile the website manager:
+```bash
+cd src/tools
+make clean
+make
+sudo cp sn_website_manager /usr/local/bin/
+```
+
+2. Install dependencies:
+```bash
+sudo apt-get update
+sudo apt-get install nginx tor iptables
+```
+
+3. Configure Tor for hidden services:
+```bash
+sudo mkdir -p /var/lib/tor/hidden_service
+sudo chown debian-tor:debian-tor /var/lib/tor/hidden_service
+```
+
+### Usage
+
+#### Creating a Website
+
+```bash
+sudo sn_website_manager create mijnsite
+```
+
+This will:
+1. Find an available port
+2. Create a Tor hidden service
+3. Generate a .sn domain (mijnsite.<onion-address>.sn)
+4. Configure Nginx
+5. Set up DDoS protection
+6. Start the website
+
+The website will be available at:
+- `http://mijnsite.<onion-address>.sn` (via .sn network)
+- `http://<onion-address>.onion` (via Tor)
+
+#### Managing Websites
+
+```bash
+# Start a website
+sudo sn_website_manager start mijnsite
+
+# Stop a website
+sudo sn_website_manager stop mijnsite
+
+# Enable on boot
+sudo sn_website_manager enable mijnsite
+
+# Disable on boot
+sudo sn_website_manager disable mijnsite
+
+# Check status
+sudo sn_website_manager status mijnsite
+
+# List all websites
+sudo sn_website_manager list
+```
+
+### Architecture
+
+```
+[Tor Network]
+    |
+    v
+[Tor Hidden Service]
+    |
+    v
+[Nginx Reverse Proxy]
+    |
+    v
+[Website Manager]
+    |
+    v
+[Individuele Websites]
+```
+
+### Security Features
+
+1. **Network Layer**:
+   - Tor hidden services
+   - Firewall rules
+   - Rate limiting
+   - Connection limits
+
+2. **Application Layer**:
+   - Isolated processes
+   - Limited user permissions
+   - Comprehensive logging
+   - Automatic updates
+
+3. **Data Layer**:
+   - Encrypted storage
+   - Backups
+   - Isolated filesystems
+
+### Files & Directories
+
+- `/var/www/sn/` - Website files
+- `/etc/sn/websites/` - Website configurations
+- `/etc/nginx/conf.d/` - Nginx configurations
+- `/var/log/sn/websites/` - Log files
+- `/etc/sn/firewall.rules` - Firewall rules
+- `/var/lib/tor/hidden_service/` - Tor hidden services
+
+### Troubleshooting
+
+#### Common Issues
+
+1. **Port Conflicts**:
+   ```bash
+   sudo netstat -tulpn | grep LISTEN
+   ```
+
+2. **Nginx Errors**:
+   ```bash
+   sudo nginx -t
+   sudo tail -f /var/log/nginx/error.log
+   ```
+
+3. **Tor Issues**:
+   ```bash
+   sudo systemctl status tor
+   sudo tail -f /var/log/tor/log
+   ```
+
+#### Logging
+
+- Website logs: `/var/log/sn/websites/[website].log`
+- Nginx logs: `/var/log/nginx/`
+- Tor logs: `/var/log/tor/log`
+- System logs: `/var/log/syslog`
+
+### Development
+
+#### Code Structure
+
+```
+src/
+  tools/
+    sn_website_manager.c  # Main program
+    Makefile             # Compilation configuration
+```
+
+#### Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a pull request
+
+### License
+
+GNU General Public License v3.0
+
+### Contact
+
+For questions or issues:
+- Issue tracker: [GitHub Issues](https://github.com/your-repo/issues)
+- Email: support@sn.network 
