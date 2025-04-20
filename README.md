@@ -4,32 +4,51 @@
 
 ## English <a name="english"></a>
 
+### Our Motivation: Privacy, Reliability, Hostability
+
+In an era where genuine online privacy is increasingly challenged, the need for robust, user-controlled communication networks is paramount. Standard Tor provides a vital foundation for anonymity, but hosting services reliably and efficiently within it can present hurdles. This project aims to address these challenges.
+
+This custom Tor build focuses specifically on:
+
+*   **Enhanced Reliability:** Implementing changes to improve the stability and uptime of services hosted on the network.
+*   **Simplified & Efficient Hostability:** Making it easier and more performant to host hidden services, particularly with the integration of the `.sn` domain system and management tools.
+*   **Preserving Privacy:** Building upon Tor's strong privacy guarantees while optimizing for these specific use cases.
+
+We believe in empowering users to create and access services with greater privacy and control, fostering a more resilient and decentralized internet.
+
 ### What is this?
 
-This is a **custom version (fork)** of the Tor source code. While the original Tor focuses on general anonymity, this fork is specifically adapted and optimized for:
+This is a **custom version (fork)** of the Tor source code, known informally as the **.SN Network Tor**. While the original Tor focuses on general anonymity, this fork is specifically adapted and optimized for:
 
-* **Improved Hostability:** More stable and efficient hosting of services (especially Hidden Services) on the network.
+* **Improved Hostability & Reliability:** More stable, efficient, and easier hosting of services (especially Hidden Services) on the network.
 * **Higher Speed:** Optimizations for faster connections and response times within the network.
-* **.SN Network Integration:** Specific adaptations for better operation and interaction within custom `.sn` network environments.
+*   **.SN Network Integration:** Includes internal handling of `.sn` domain resolution. When a client uses this Tor instance (e.g., via SOCKS proxy or DNSPort), requests for `name.<onion-address>.sn` domains are automatically resolved to the corresponding Tor Hidden Service (`<onion-address>.onion`). **No separate DNS server is required.**
 * **Enhanced Security:** Additional measures and refined logic to improve security.
 
-The basic functionality of Tor (anonymity via layered encryption and relays) is preserved, but with these specific improvements.
+The basic functionality of Tor (anonymity via layered encryption and relays) is preserved, but with these specific improvements tailored for reliable service hosting.
 
 ### New Features: Website Manager
 
-A powerful tool for hosting websites on the .sn network with Tor integration:
+A powerful tool for managing Nginx/Tor configurations for websites hosted on the network:
 
 ```bash
-# Create a new website
+# Create Nginx/Tor configs for a new website
 sudo sn_website_manager create mijnsite
 
-# The website will be available at:
-# - http://mijnsite.<onion-address>.sn
-# - http://<onion-address>.onion
+# Apply configurations (reload Nginx/Tor)
+sudo sn_website_manager apply mijnsite
+
+# Delete website configs
+sudo sn_website_manager delete mijnsite
+
+# Check status
+sudo sn_website_manager status mijnsite
 ```
 
+**Note:** This tool manages configuration files and reloads services (Nginx, Tor). It does **not** manage the lifecycle (start, stop, enable, disable) of your actual website application (e.g., Node.js server). You must use a separate process manager like `systemd`, `pm2`, or Docker for that.
+
 Features:
-- Virtual hosting with .sn domains
+- Virtual hosting with `.sn` domains (resolved internally by this Tor fork)
 - Automatic Tor hidden service setup
 - DDoS protection
 - Automatic port configuration
@@ -37,6 +56,195 @@ Features:
 - Comprehensive logging
 
 See [Website Manager Documentation](#website-manager) for details.
+
+### Accessing .SN Domains
+
+To access `.sn` domains hosted using this system, your client application (e.g., browser, curl) **must** be configured to use this specific Tor instance for its network requests and DNS resolution. Common methods include:
+
+1.  **SOCKS Proxy:** Configure your application to use the SOCKS proxy provided by this Tor instance (usually `127.0.0.1` on port `9050` by default, check your `torrc` configuration).
+2.  **DNSPort:** Configure your system's DNS resolver to use Tor's `DNSPort` (if enabled in `torrc`, e.g., `127.0.0.1` on port `5353`). Requests for `.sn` domains made through this port will be resolved internally by Tor.
+
+Standard browsers or tools without this configuration will **not** be able to resolve `.sn` domains.
+
+### Hosting Modern Web Applications (React, Angular, Vue, etc.)
+
+Yes, this system is capable of hosting modern JavaScript applications built with frameworks like React.
+
+*   **Serving:** The `sn_website_manager` uses Nginx, which efficiently serves the static HTML, CSS, and JavaScript bundles generated by your build process.
+*   **Backend APIs:** If your application requires a backend API or server-side rendering (SSR), you can run your Node.js (or other) server locally and configure the Nginx instance (managed by `sn_website_manager`) to act as a reverse proxy to it. You would need to manually edit the Nginx configuration file for the specific website in `/etc/nginx/conf.d/` after it's created.
+*   **Performance Considerations:**
+    *   **Tor Latency:** The Tor network inherently adds latency due to its anonymizing relays. While this fork includes optimizations for higher speed, initial page loads and API requests will likely be slower than on the standard internet.
+    *   **Nginx Optimizations:** The generated Nginx configuration includes basic caching and `gzip` compression (see below) to improve asset delivery speed.
+    *   **Application Optimizations:** Standard web performance techniques are highly recommended: code splitting, lazy loading, image optimization, minimizing bundle sizes, etc. These significantly impact user experience over Tor.
+    *   **Server Resources:** Ensure the server hosting the Tor instance and Nginx has adequate CPU, RAM, and bandwidth.
+
+### Technical Stack
+
+This project and its associated tools primarily utilize:
+
+*   **Core:** C language
+*   **Build System:** GNU Autotools (autoconf, automake), Make, GCC (or Clang)
+*   **Core Libraries:** OpenSSL (for cryptography), Libevent (for asynchronous I/O), zlib (for compression)
+*   **Website Management (`sn_website_manager`):** Bash scripting, Nginx (as reverse proxy/web server)
+*   **Custom Features:** Internal DNS resolution mechanism for `.sn` domains within the Tor process.
+
+### Directory Structure
+
+The code is organized in different directories within the `src` folder:
+
+* `src/core`: The core of Tor, handling network connections and circuit building.
+* `src/feature`: Specific features like hidden services (`hs`), directory authorities, etc.
+* `src/lib`: General utility functions and libraries used throughout.
+* `src/app`: Code specific to the Tor application itself.
+* `src/ext`: External libraries that Tor depends on.
+* `src/trunnel`: Code for parsing Tor's cells (data packets).
+* `src/tools`: Useful tools for development or management.
+* `src/test`: Unit tests and integration tests.
+* `src/win32`: Windows-specific code.
+
+### Building the Code
+
+To run or test the code, you need to compile it first. On Windows, we typically use:
+
+1. **MSYS2 with MinGW-w64**: This provides a Linux-like environment and the `gcc` compiler.
+2. **Build Tools**: You'll need tools like `make`, `automake`, `autoconf`. Install these via the MSYS2 package manager (`pacman`).
+3. **Dependencies**: Tor requires external libraries (like OpenSSL, Libevent, zlib). Install these via `pacman` (the `mingw-w64-x86_64-...` versions).
+
+**Important:** During the build process, an `orconfig.h` file is generated. This file contains configuration settings specific to your system and build. Many other files need this (`#include "orconfig.h"`). **Without a successful build, your linter (and compiler) will show many errors because this file is missing!**
+
+Typical build steps (executed in the MSYS2 MinGW 64-bit shell):
+
+```bash
+./autogen.sh  # Creates the configure script (only needed first time)
+./configure   # Checks your system and sets up the build
+make          # Compiles the code
+```
+
+### How to Run
+
+After successfully building the code:
+
+1.  **Locate the Executable:** The compiled `tor` executable will typically be located in the `src/app/` directory relative to your build location.
+2.  **Configuration:** Tor requires a configuration file, usually named `torrc`. You can start with a sample configuration and modify it. Key options to consider for this fork include enabling the `SocksPort` or `DNSPort` for client access and configuring hidden services if you plan to host.
+    *   *Example minimal `torrc` snippet for client access:*
+        ```
+        SocksPort 9050
+        DataDirectory /path/to/your/tor/data
+        ```
+    *   Refer to the official Tor manual and the documentation within this project (`docs/` perhaps, or specific config files) for details on `.sn` related configuration if needed.
+3.  **Running Tor:** Execute the compiled binary, specifying the path to your `torrc` file using the `-f` flag:
+    ```bash
+    # Example (adjust paths as necessary)
+    ./src/app/tor -f /path/to/your/torrc
+    ```
+    Tor will log output to the console or a configured log file.
+4.  **Using `sn_website_manager` (If Applicable):** If you installed the website manager tool (e.g., via `make install` or similar, check `deploy.sh` or `Makefile.am` for details), you can use it as described in the [New Features](#new-features-website-manager) section.
+
+### Important Considerations (What NOT to Do)
+
+*   **Do NOT expect `.sn` domains to work** without configuring your client application (browser, etc.) to use *this specific* Tor build's SOCKS proxy or DNSPort. Standard DNS resolvers or other Tor instances will not recognize `.sn` domains.
+*   **Do NOT run outdated versions.** Security vulnerabilities are regularly found in network software. Keep your build updated from the source repository to benefit from security patches.
+*   **Do NOT misconfigure your `torrc`.** Incorrect settings can break functionality or compromise privacy/security. Refer to the official Tor documentation and any specific documentation for this fork.
+*   **Do NOT neglect server security.** Running a Tor relay or hidden service requires proper server hardening (firewalls, updates, access control) independent of Tor itself.
+*   **Do NOT assume the `sn_website_manager` handles your web application's lifecycle.** It only manages Nginx/Tor configurations; use `systemd`, `pm2`, Docker, etc., to manage your actual web server process.
+*   **Be mindful of resource usage.** Tor, especially when hosting services, can consume significant bandwidth, CPU, and memory. Monitor your system resources.
+
+### Development with VS Code
+
+To make it easier to read and write code in VS Code, we have a configuration file: `.vscode/c_cpp_properties.json`.
+
+* **What it does:** This file tells the C/C++ extension where to find `#include` files (like `orconfig.h` and other Tor headers).
+* **Settings:**
+    * `includePath`: Lists all directories where VS Code should look for header files.
+    * `compilerPath`: Points to the `gcc.exe` compiler in your MSYS2 installation.
+    * `intelliSenseMode`: Set to `windows-gcc-x64` since we're using GCC via MSYS2.
+
+**Remember:** Even with the correct VS Code configuration, you still need to **successfully build** the code first so that `orconfig.h` exists, otherwise include errors will persist.
+
+### Recent Updates
+
+* Added secure server setup script with improved logging and backup functionality
+* Enhanced directory authority bandwidth management
+* Improved hidden service performance and security
+* Added new testing framework for network components
+
+### More Information
+
+* Check the official Tor documentation for the most up-to-date build instructions and deeper explanations of standard Tor features.
+* Explore the `src` directory to see how different components work together.
+* Review the `doc/` directory within this project for fork-specific details (if available).
+
+### Proposed Feature: SN/Onion Search Engine
+
+To enhance discoverability within the `.sn` and `.onion` space, a dedicated search engine could be developed. The core idea is to build a crawler and indexer that operates *exclusively* over the Tor network.
+
+**Key Requirement:** Any such search engine aiming to include `.sn` domains **must** utilize this specific custom SN Network Tor build for its crawling operations, as standard Tor cannot resolve `.sn` addresses. It would require careful design to handle the unique challenges of indexing hidden services, including volatility and content moderation.
+
+*(Note: This is a conceptual proposal; the search engine itself is a separate, complex project.)*
+
+## Nederlands <a name="nederlands"></a>
+
+### Wat is dit?
+
+Dit is een **aangepaste versie (fork)** van de Tor broncode. Terwijl de originele Tor focust op algemene anonimiteit, is deze fork specifiek aangepast en geoptimaliseerd voor:
+
+* **Verbeterde Hostability:** Stabieler en efficiënter hosten van services (vooral Hidden Services) op het netwerk.
+* **Hogere Snelheid:** Optimalisaties voor snellere verbindingen en reactietijden binnen het netwerk.
+* **.SN Netwerk Integratie:** Bevat interne afhandeling van `.sn` domeinresolutie. Wanneer een client deze Tor-instantie gebruikt (bv. via SOCKS-proxy of DNSPort), worden verzoeken voor `naam.<onion-adres>.sn` domeinen automatisch omgezet naar de overeenkomstige Tor Hidden Service (`<onion-adres>.onion`). **Er is geen aparte DNS-server nodig.**
+* **Verbeterde Beveiliging:** Extra maatregelen en verfijnde logica om de beveiliging te verbeteren.
+
+De basisfunctionaliteit van Tor (anonimiteit via gelaagde encryptie en relays) blijft behouden, maar met deze specifieke verbeteringen.
+
+### Nieuwe Features: Website Manager
+
+Een krachtige tool voor het beheren van Nginx/Tor-configuraties voor websites die op het netwerk worden gehost:
+
+```bash
+# Maak Nginx/Tor-configuraties voor een nieuwe website
+sudo sn_website_manager create mijnsite
+
+# Pas configuraties toe (herlaad Nginx/Tor)
+sudo sn_website_manager apply mijnsite
+
+# Verwijder website-configuraties
+sudo sn_website_manager delete mijnsite
+
+# Controleer status
+sudo sn_website_manager status mijnsite
+```
+
+**Let op:** Deze tool beheert configuratiebestanden en herlaadt services (Nginx, Tor). Het beheert **niet** de levenscyclus (start, stop, enable, disable) van uw daadwerkelijke website-applicatie (bv. Node.js-server). Daarvoor moet u een aparte procesmanager zoals `systemd`, `pm2`, of Docker gebruiken.
+
+Features:
+- Virtual hosting with `.sn` domains (intern opgelost door deze Tor-fork)
+- Automatic Tor hidden service setup
+- DDoS-bescherming
+- Automatic port configuration
+- Nginx reverse proxy
+- Uitgebreide logging
+
+See [Website Manager Documentation](#website-manager) for details.
+
+### Toegang tot .SN Domeinen
+
+Om toegang te krijgen tot `.sn` domeinen die met dit systeem worden gehost, **moet** uw clientapplicatie (bv. browser, curl) geconfigureerd zijn om deze specifieke Tor-instantie te gebruiken voor zijn netwerkverzoeken en DNS-resolutie. Gebruikelijke methoden zijn:
+
+1.  **SOCKS Proxy:** Configureer uw applicatie om de SOCKS-proxy te gebruiken die door deze Tor-instantie wordt aangeboden (meestal `127.0.0.1` op poort `9050` standaard, controleer uw `torrc`-configuratie).
+2.  **DNSPort:** Configureer de DNS-resolver van uw systeem om Tor's `DNSPort` te gebruiken (indien ingeschakeld in `torrc`, bv. `127.0.0.1` op poort `5353`). Verzoeken voor `.sn` domeinen via deze poort worden intern door Tor opgelost.
+
+Standaard browsers of tools zonder deze configuratie kunnen `.sn` domeinen **niet** oplossen.
+
+### Hosting Modern Web Applications (React, Angular, Vue, etc.)
+
+Yes, this system is capable of hosting modern JavaScript applications built with frameworks like React.
+
+*   **Serving:** The `sn_website_manager` uses Nginx, which efficiently serves the static HTML, CSS, and JavaScript bundles generated by your build process.
+*   **Backend APIs:** If your application requires a backend API or server-side rendering (SSR), you can run your Node.js (or other) server locally and configure the Nginx instance (managed by `sn_website_manager`) to act as a reverse proxy to it. You would need to manually edit the Nginx configuration file for the specific website in `/etc/nginx/conf.d/` after it's created.
+*   **Performance Considerations:**
+    *   **Tor Latency:** The Tor network inherently adds latency due to its anonymizing relays. While this fork includes optimizations for higher speed, initial page loads and API requests will likely be slower than on the standard internet.
+    *   **Nginx Optimizations:** The generated Nginx configuration includes basic caching and `gzip` compression (see below) to improve asset delivery speed.
+    *   **Application Optimizations:** Standard web performance techniques are highly recommended: code splitting, lazy loading, image optimization, minimizing bundle sizes, etc. These significantly impact user experience over Tor.
+    *   **Server Resources:** Ensure the server hosting the Tor instance and Nginx has adequate CPU, RAM, and bandwidth.
 
 ### Directory Structure
 
@@ -91,59 +299,9 @@ To make it easier to read and write code in VS Code, we have a configuration fil
 
 ### More Information
 
-* Check the official Tor documentation for the most up-to-date build instructions and deeper explanations.
+* Check the official Tor documentation for the most up-to-date build instructions and deeper explanations of standard Tor features.
 * Explore the `src` directory to see how different components work together.
-
-## Nederlands <a name="nederlands"></a>
-
-### Wat is dit?
-
-Dit is een **aangepaste versie (fork)** van de Tor broncode. Terwijl de originele Tor focust op algemene anonimiteit, is deze fork specifiek aangepast en geoptimaliseerd voor:
-
-```bash
-./configure
-make
-make install
-```
-
-To build Tor from a just-cloned git repository:
-
-```
-./autogen.sh
-./configure
-make
-make install
-```
-
-## Releases
-
-The tarballs, checksums and signatures can be found here: https://dist.torproject.org
-
-- Checksum: `<tarball-name>.sha256sum`
-- Signatures: `<tarball-name>.sha256sum.asc`
-
-### Schedule
-
-You can find our release schedule here:
-
-## Specifieke Setup Voor Deze Workspace (Windows + VS Code)
-
-In deze specifieke ontwikkelomgeving hebben we een paar dingen gedaan om het werken met de Tor-codebase op Windows met VS Code makkelijker te maken:
-
-1.  **VS Code Configuratie (.vscode/c_cpp_properties.json):**
-    *   We hebben dit bestand aangemaakt en geconfigureerd.
-    *   Het bevat de juiste `includePath`s zodat VS Code de Tor header-bestanden kan vinden (cruciaal na het builden!).
-    *   Het `compilerPath` is ingesteld voor een standaard MSYS2/MinGW-w64 installatie (`C:/msys64/mingw64/bin/gcc.exe`). **Controleer of dit pad klopt voor jouw installatie!**
-    *   Dit helpt enorm bij het oplossen van include-fouten in de editor (linting) en zorgt voor betere code-suggesties (IntelliSense), **nadat** je het project succesvol hebt gebouwd.
-
-2.  **Focus op `orconfig.h`:**
-    *   We benadrukken dat het **essentieel** is om het project eerst succesvol te builden (`./configure && make` in MSYS2 MinGW shell).
-    *   De build genereert het bestand `src/core/or/orconfig.h` (of een vergelijkbaar pad afhankelijk van de build output). Zonder dit bestand zullen de C/C++ extensie en de compiler klagen over missende headers.
-
-3.  **Windows Build Uitleg:**
-    *   De build-instructies hierboven zijn gericht op het gebruik van MSYS2/MinGW-w64, de gebruikelijke manier om Tor op Windows te compileren voor ontwikkeling.
-
-**Kortom:** Zorg dat MSYS2/MinGW-w64 correct is geïnstalleerd met alle dependencies, voer de build-stappen uit (`./configure`, `make`), en controleer/herstart VS Code. Dan zou je een veel soepelere ontwikkelervaring moeten hebben!
+* Review the `doc/` directory within this project for fork-specific details (if available).
 
 ## Kernaanpassingen in Deze Fork
 
@@ -158,7 +316,7 @@ Deze fork onderscheidt zich van de standaard Tor door de volgende kernaanpassing
     *   Communicatie overhead tussen instances is verminderd waar mogelijk.
 
 *   **Integratie met .SN Netwerk:**
-    *   Specifieke logica toegevoegd of aangepast om naadloos te werken met de naamresolutie, protocollen of topologie van een `.sn` netwerk.
+    *   Specifieke logica toegevoegd of aangepast om naadloos te werken met de naamresolutie van een `.sn` netwerk. **Deze Tor-versie handelt `.sn` domeinen intern af via SOCKS/DNSPort; er is geen externe DNS-server nodig.**
     *   (Voeg hier eventueel specifiekere details toe over de .sn integratie indien bekend).
 
 *   **Veiligheidsverbeteringen:**
@@ -391,14 +549,9 @@ Voor vragen of problemen:
 
 ### Overview
 
-The SN Network Website Manager is a powerful tool for hosting websites on the .sn network with full Tor integration. It provides:
+The SN Network Website Manager is a powerful tool for managing Nginx/Tor configurations for websites on the network. It supports static sites (HTML, CSS, JS including React/Angular/Vue builds) and can be manually configured to proxy to backend applications.
 
-- Virtual hosting with .sn domains
-- Automatic Tor hidden service setup
-- DDoS protection
-- Automatic port configuration
-- Nginx reverse proxy
-- Comprehensive logging
+**Important:** This tool configures Nginx and Tor, but does **not** manage the actual website process (e.g., starting/stopping a Node.js server). You need to manage your application's lifecycle separately using systemd, pm2, Docker, etc.
 
 ### Installation
 
@@ -424,45 +577,66 @@ sudo chown debian-tor:debian-tor /var/lib/tor/hidden_service
 
 ### Usage
 
-#### Creating a Website
+#### Creating Website Configuration
 
 ```bash
 sudo sn_website_manager create mijnsite
 ```
 
 This will:
-1. Find an available port
-2. Create a Tor hidden service
-3. Generate a .sn domain (mijnsite.<onion-address>.sn)
-4. Configure Nginx
-5. Set up DDoS protection
-6. Start the website
+1. Find an available local port for Nginx to proxy to (if needed, or for Nginx to listen on eventually)
+2. Create a Tor hidden service configuration in `/etc/tor/torrc` and the HS directory.
+3. Generate an Nginx configuration file (`/etc/nginx/conf.d/mijnsite.conf`) serving `mijnsite.<onion-address>.sn`.
+4. Create the website directory (`/var/www/sn/mijnsite`) with a basic `index.html`.
+5. Add basic firewall rules for the chosen port.
+6. Reload Tor and Nginx services.
 
-The website will be available at:
-- `http://mijnsite.<onion-address>.sn` (via .sn network)
-- `http://<onion-address>.onion` (via Tor)
+#### Deploying a Static Build (React, Vue, Angular, etc.)
 
-#### Managing Websites
+After running `create`, you need to deploy your application's static files:
+
+1.  **Build your Application:** Navigate to your React project directory in your terminal and run the production build command (this typically creates a `build` or `dist` folder):
+    ```bash
+    npm run build
+    # or yarn build
+    ```
+2.  **Copy Build Files:** Copy the *contents* of your application's build output directory (e.g., `build/`) to the web root directory created by the website manager (`/var/www/sn/mijnsite/`). **Make sure to replace the default `index.html`**. You might need `sudo` depending on permissions.
+    ```bash
+    # Example: Replace 'build' if your output folder is different
+    # Example: Replace 'mijnsite' with your actual site name
+    sudo cp -r build/* /var/www/sn/mijnsite/
+    ```
+3.  **Verify:** Access your site via its `.onion` or `.sn` address through a correctly configured Tor browser or client to ensure it loads correctly.
+
+*(Remember: If your app needs a backend API, you'll need to run that separately and manually configure the Nginx reverse proxy in `/etc/nginx/conf.d/mijnsite.conf`)*
+
+#### Applying Configuration Changes
+
+If you manually edit configurations, you can reload Nginx and Tor:
+```bash
+sudo sn_website_manager apply mijnsite
+```
+
+#### Deleting Website Configuration
 
 ```bash
-# Start a website
-sudo sn_website_manager start mijnsite
+sudo sn_website_manager delete mijnsite
+```
+This command attempts to remove all associated configurations (Nginx, Tor, firewall rules) and directories created by the `create` command.
 
-# Stop a website
-sudo sn_website_manager stop mijnsite
+#### Checking Status
 
-# Enable on boot
-sudo sn_website_manager enable mijnsite
-
-# Disable on boot
-sudo sn_website_manager disable mijnsite
-
-# Check status
+```bash
 sudo sn_website_manager status mijnsite
+```
+Checks Nginx configuration syntax, Nginx/Tor service status, and the existence of the hidden service directory.
 
-# List all websites
+#### Listing Websites
+
+```bash
 sudo sn_website_manager list
 ```
+Lists websites based on the configuration files found in `/etc/sn/websites/`.
 
 ### Architecture
 
@@ -491,15 +665,15 @@ sudo sn_website_manager list
    - Connection limits
 
 2. **Application Layer**:
-   - Isolated processes
-   - Limited user permissions
-   - Comprehensive logging
-   - Automatic updates
+   - Geïsoleerde processen
+   - Beperkte gebruikersrechten
+   - Uitgebreide logging
+   - Automatische updates
 
 3. **Data Layer**:
    - Encrypted storage
    - Backups
-   - Isolated filesystems
+   - Geïsoleerde bestandssystemen
 
 ### Files & Directories
 
@@ -560,3 +734,123 @@ src/
 ### License
 
 GNU General Public License v3.0
+
+### Contact
+
+For questions or issues:
+- Issue tracker: [GitHub Issues](https://github.com/your-repo/issues)
+- Email: support@sn.network
+
+## Testing
+
+To test the setup after creating a website (e.g., `sudo sn_website_manager create test`):
+
+1.  **Verify Hidden Service:** Check if the Tor hidden service is running and the hostname file exists:
+    ```bash
+    sudo systemctl status tor
+    sudo ls -l /var/lib/tor/hidden_service/test/
+    sudo cat /var/lib/tor/hidden_service/test/hostname
+    ```
+    Note the `<onion-address>.onion` from the hostname file.
+
+2.  **Test Standard Onion Access:** Use a Tor-enabled browser or `curl` with Tor's SOCKS proxy to access the standard `.onion` address:
+    ```bash
+    # Replace 9050 if your Tor SOCKS port is different
+    curl --socks5-hostname localhost:9050 http://<onion-address>.onion
+    ```
+
+3.  **Test .SN Access:** Use `curl` with Tor's SOCKS proxy to access the `.sn` address. This verifies Tor's internal resolution:
+    ```bash
+    # Replace 9050 if your Tor SOCKS port is different
+    # Replace <onion-address> with the actual onion address part
+    curl --socks5-hostname localhost:9050 http://test.<onion-address>.sn
+    ```
+    If this works, Tor is correctly resolving the `.sn` address internally.
+
+4.  **Check Nginx Configuration:** Ensure Nginx configuration is valid:
+    ```bash
+    sudo nginx -t
+    ```
+
+5.  **Check Logs:** Review logs for errors:
+    ```bash
+    tail -f /var/log/tor/log
+    tail -f /var/log/nginx/error.log
+    tail -f /var/log/sn/websites/test.error.log
+    ```
+
+### Troubleshooting
+
+1. Check service status:
+   ```bash
+   systemctl status tor
+   systemctl status nginx
+   # Check status of specific website (if applicable systemd services are created)
+   # sudo sn_website_manager status <website_name>
+   ```
+
+## Bestanden & Directories
+
+- `/var/www/sn/` - Website bestanden
+- `/etc/sn/websites/` - Website configuraties
+- `/etc/nginx/conf.d/` - Nginx configuraties
+- `/var/log/sn/websites/` - Log bestanden
+- `/etc/sn/firewall.rules` - Firewall regels
+- `/var/lib/tor/hidden_service/` - Tor hidden services
+
+## Troubleshooting
+
+### Veelvoorkomende problemen
+
+1. **Poort conflicten**:
+   ```bash
+   sudo netstat -tulpn | grep LISTEN
+   ```
+
+2. **Nginx fouten**:
+   ```bash
+   sudo nginx -t
+   sudo tail -f /var/log/nginx/error.log
+   ```
+
+3. **Tor problemen**:
+   ```bash
+   sudo systemctl status tor
+   sudo tail -f /var/log/tor/log
+   ```
+
+### Logging
+
+- Website logs: `/var/log/sn/websites/[website].log`
+- Nginx logs: `/var/log/nginx/`
+- Tor logs: `/var/log/tor/log`
+- Systeem logs: `/var/log/syslog`
+
+## Ontwikkeling
+
+### Code Structuur
+
+```
+src/
+  tools/
+    sn_website_manager.c  # Hoofd programma
+    Makefile             # Compilatie configuratie
+```
+
+### Bijdragen
+
+1. Fork de repository
+2. Maak een feature branch
+3. Commit je wijzigingen
+4. Push naar de branch
+5. Maak een pull request
+
+## Licentie
+
+GNU General Public License v3.0
+
+## Contact
+
+Voor vragen of problemen:
+- Issue tracker: [GitHub Issues](https://github.com/your-repo/issues)
+- Email: support@sn.network 

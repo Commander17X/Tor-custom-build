@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0A0A0B;
+  --card-bg: #111113;
+  --accent: #6366F1;
+  --accent-hover: #4F46E5;
+  --border: rgba(255, 255, 255, 0.1);
+}
+
+body {
+  @apply bg-[var(--background)] text-white antialiased;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-white/5 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-indigo-600/50 rounded-full hover:bg-indigo-500/50 transition-colors;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.glass-effect {
+  @apply backdrop-blur-md bg-white/[0.02] border border-white/[0.05];
+}
+
+.card {
+  @apply bg-[var(--card-bg)] border border-[var(--border)] rounded-xl;
+}
+
+.button-primary {
+  @apply bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-4 py-2 rounded-lg transition-colors;
+}
+
+.button-secondary {
+  @apply bg-white/5 hover:bg-white/10 text-white/80 hover:text-white px-4 py-2 rounded-lg transition-colors;
+}

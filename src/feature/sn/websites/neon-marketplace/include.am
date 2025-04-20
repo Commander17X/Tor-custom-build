@@ -1,0 +1,5 @@
+noinst_HEADERS += \
+	src/feature/sn/websites/neon-marketplace/config.h
+
+src_feature_sn_libtor_sn_la_SOURCES += \
+	src/feature/sn/websites/neon-marketplace/website.c 

@@ -5,10 +5,8 @@ MODULE_DIRAUTH_SOURCES =					\
 	src/feature/dirauth/authmode.c				\
 	src/feature/dirauth/bridgeauth.c			\
 	src/feature/dirauth/bandwidth/bwauth.c			\
-	src/feature/dirauth/dirauth_config.c			\
 	src/feature/dirauth/dirauth_periodic.c			\
 	src/feature/dirauth/dirauth_sys.c			\
-	src/feature/dirauth/consensus/dircollate.c		\
 	src/feature/dirauth/dirvote.c				\
 	src/feature/dirauth/dsigs_parse.c			\
 	src/feature/dirauth/guardfraction.c			\
@@ -26,12 +24,10 @@ noinst_HEADERS +=					\
 	src/feature/dirauth/authmode.h			\
 	src/feature/dirauth/bridgeauth.h		\
 	src/feature/dirauth/bandwidth/bwauth.h		\
-	src/feature/dirauth/dirauth_config.h		\
 	src/feature/dirauth/dirauth_options.inc		\
 	src/feature/dirauth/dirauth_options_st.h	\
 	src/feature/dirauth/dirauth_periodic.h		\
 	src/feature/dirauth/dirauth_sys.h		\
-	src/feature/dirauth/consensus/dircollate.h	\
 	src/feature/dirauth/dirvote.h			\
 	src/feature/dirauth/dsigs_parse.h		\
 	src/feature/dirauth/guardfraction.h		\

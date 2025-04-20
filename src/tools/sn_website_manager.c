@@ -150,9 +150,25 @@ int create_nginx_config(const char *name, const char *onion_address, int port) {
     fprintf(nginx, "server {\n");
     fprintf(nginx, "    listen 80;\n");
     fprintf(nginx, "    server_name %s;\n\n", sn_domain);
+    
+    fprintf(nginx, "    # Basic Security Headers\n");
+    fprintf(nginx, "    add_header X-Frame-Options \"SAMEORIGIN\";\n");
+    fprintf(nginx, "    add_header X-Content-Type-Options \"nosniff\";\n");
+    fprintf(nginx, "    add_header Referrer-Policy \"strict-origin-when-cross-origin\";\n");
+    // Basic CSP - might need adjustment per site
+    fprintf(nginx, "    add_header Content-Security-Policy \"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self';\";\n\n"); 
+
     fprintf(nginx, "    # DDoS Protection\n");
     fprintf(nginx, "    limit_req_zone $binary_remote_addr zone=one:10m rate=1r/s;\n");
     fprintf(nginx, "    limit_conn_zone $binary_remote_addr zone=addr:10m;\n\n");
+
+    fprintf(nginx, "    # Gzip Compression\n");
+    fprintf(nginx, "    gzip on;\n");
+    fprintf(nginx, "    gzip_vary on;\n");
+    fprintf(nginx, "    gzip_proxied any;\n");
+    fprintf(nginx, "    gzip_comp_level 6;\n");
+    fprintf(nginx, "    gzip_types text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;\n\n");
+
     fprintf(nginx, "    location / {\n");
     fprintf(nginx, "        limit_req zone=one burst=5;\n");
     fprintf(nginx, "        limit_conn addr 10;\n");
@@ -163,9 +179,9 @@ int create_nginx_config(const char *name, const char *onion_address, int port) {
     fprintf(nginx, "        proxy_set_header X-Forwarded-Proto $scheme;\n");
     fprintf(nginx, "    }\n\n");
     fprintf(nginx, "    # Static file caching\n");
-    fprintf(nginx, "    location ~* \\.(jpg|jpeg|png|gif|ico|css|js)$ {\n");
+    fprintf(nginx, "    location ~* \\.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {\n");
     fprintf(nginx, "        expires 30d;\n");
-    fprintf(nginx, "        add_header Cache-Control \"public, no-transform\";\n");
+    fprintf(nginx, "        add_header Cache-Control \"public, immutable\";\n");
     fprintf(nginx, "    }\n\n");
     fprintf(nginx, "    # Logging\n");
     fprintf(nginx, "    access_log %s/%s.access.log;\n", LOG_DIR, name);
@@ -222,32 +238,22 @@ int create_website_directory(const char *name) {
     return 0;
 }
 
-// Function to start a website
-int start_website(const char *name) {
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd), "systemctl start sn-website-%s && systemctl reload nginx", name);
-    return system(cmd);
-}
-
-// Function to stop a website
-int stop_website(const char *name) {
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd), "systemctl stop sn-website-%s && systemctl reload nginx", name);
-    return system(cmd);
-}
-
-// Function to enable website on boot
-int enable_website(const char *name) {
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd), "systemctl enable sn-website-%s", name);
-    return system(cmd);
-}
-
-// Function to disable website on boot
-int disable_website(const char *name) {
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd), "systemctl disable sn-website-%s", name);
-    return system(cmd);
+// Function to apply configurations by reloading services
+int apply_configurations(const char *name) {
+    // Reload Nginx first to pick up new/removed configs
+    printf("Reloading Nginx configuration for %s...\n", name);
+    if (system("systemctl reload nginx") != 0) {
+        fprintf(stderr, "Error: Failed to reload Nginx.\n");
+        // Don't necessarily fail, Tor might still need reload
+    }
+    // Reload Tor to pick up new/removed hidden services
+    printf("Reloading Tor configuration for %s...\n", name);
+    if (system("systemctl reload tor") != 0) {
+        fprintf(stderr, "Error: Failed to reload Tor.\n");
+        return -1; // Failing Tor reload is more critical
+    }
+    printf("Nginx and Tor configurations reloaded successfully.\n");
+    return 0;
 }
 
 // Function to list all websites
@@ -288,27 +294,209 @@ void list_websites() {
     closedir(dir);
 }
 
-// Function to show website status
+// Function to show website status (simplified)
 int show_website_status(const char *name) {
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd), "systemctl status sn-website-%s && nginx -t", name);
+    printf("Checking status for website %s configuration:\n", name);
+    char nginx_check_cmd[256];
+    snprintf(nginx_check_cmd, sizeof(nginx_check_cmd), "nginx -t");
+    printf("\n--- Nginx Configuration Check ---\n");
+    int nginx_status = system(nginx_check_cmd);
+    if (nginx_status != 0) {
+        fprintf(stderr, "Nginx configuration test failed for website %s!\n", name);
+    } else {
+         printf("Nginx configuration syntax OK.\n");
+    }
+
+    printf("\n--- Nginx Service Status ---\n");
+    system("systemctl status nginx | cat"); // Pipe to cat for non-interactive view
+
+    printf("\n--- Tor Service Status ---\n");
+    system("systemctl status tor | cat"); // Pipe to cat
+
+    // Check for HS directory existence as a basic check
+    char tor_service_dir[256];
+    snprintf(tor_service_dir, sizeof(tor_service_dir), "%s/%s", TOR_HIDDEN_SERVICE_DIR, name);
+    struct stat st = {0};
+    printf("\n--- Hidden Service Directory Check ---\n");
+    if (stat(tor_service_dir, &st) == -1) {
+        printf("Hidden Service directory %s does NOT exist.\n", tor_service_dir);
+    } else {
+        printf("Hidden Service directory %s exists.\n", tor_service_dir);
+        // Optionally, check for hostname file existence here too
+    }
+
+    return nginx_status; // Return 0 if Nginx config is okay
+}
+
+// Function to remove website directory recursively
+int remove_website_directory(const char *name) {
+    char website_path[256];
+    snprintf(website_path, sizeof(website_path), "%s/%s", WEBSITE_DIR, name);
+    char cmd[512];
+    // Use rm -rf carefully!
+    snprintf(cmd, sizeof(cmd), "rm -rf %s", website_path);
+    printf("Executing: %s\n", cmd); // Log command for safety
     return system(cmd);
 }
 
-// Function to show help
+// Function to remove firewall rules
+// Note: This assumes rules were added with a specific comment format
+int remove_firewall_rules(const char *name, int port) {
+    char sed_cmd[512];
+    // Escape potential special characters in name for sed
+    // Simple escape for basic cases, might need more robust escaping
+    char escaped_name[256];
+    // For now, assume name is simple alphanumeric
+    strncpy(escaped_name, name, sizeof(escaped_name) - 1);
+    escaped_name[sizeof(escaped_name) - 1] = '\0';
+
+    // Remove the comment line and the two rule lines associated with the port
+    snprintf(sed_cmd, sizeof(sed_cmd),
+             "sed -i '/# Rules for website %s/,+2d' %s",
+             escaped_name, FIREWALL_RULES);
+    printf("Executing: %s\n", sed_cmd); // Log command
+    int result = system(sed_cmd);
+    if (result != 0) {
+        fprintf(stderr, "Warning: Failed to remove firewall rules using sed.\n");
+        // Don't fail the whole delete operation, but warn
+    }
+
+    // Reload firewall rules after modification
+    char restore_cmd[256];
+    snprintf(restore_cmd, sizeof(restore_cmd), "iptables-restore < %s", FIREWALL_RULES);
+    printf("Executing: %s\n", restore_cmd);
+    result = system(restore_cmd);
+    if (result != 0) {
+        fprintf(stderr, "Warning: Failed to restore firewall rules.\n");
+    }
+    return 0; // Return success even if sed/restore had issues, but log warning
+}
+
+// Function to remove Tor hidden service config from torrc
+// Note: This relies on the specific format added by create_tor_hidden_service
+int remove_tor_config(const char *name) {
+    char tor_service_dir_pattern[512];
+    // Need to escape path separators for sed
+    snprintf(tor_service_dir_pattern, sizeof(tor_service_dir_pattern),
+             "%s\/%s", TOR_HIDDEN_SERVICE_DIR, name);
+    // Escape forward slashes for sed pattern
+    for (char *p = tor_service_dir_pattern; *p; ++p) {
+        if (*p == '/') {
+            memmove(p + 1, p, strlen(p) + 1);
+            *p = '\\';
+            p++; // Skip the escaped slash
+        }
+    }
+
+    char sed_cmd[1024];
+    // Remove the comment line, HiddenServiceDir, and HiddenServicePort lines
+    snprintf(sed_cmd, sizeof(sed_cmd),
+             "sed -i '/# Hidden service for %s/,+2d' %s",
+             name, TORRC_PATH);
+
+    printf("Executing: %s\n", sed_cmd); // Log command
+    int result = system(sed_cmd);
+    if (result != 0) {
+        fprintf(stderr, "Warning: Failed to remove Tor config using sed.\n");
+        return -1; // Fail if Tor config cannot be removed
+    }
+
+    // Reload Tor config
+    printf("Executing: systemctl reload tor\n");
+    result = system("systemctl reload tor");
+    if (result != 0) {
+        fprintf(stderr, "Warning: Failed to reload Tor configuration.\n");
+        // Don't necessarily fail the whole delete, but it's a problem
+    }
+    return 0;
+}
+
+// Function to delete a website entirely
+int delete_website(const char *name) {
+    printf("Starting deletion process for website: %s\n", name);
+
+    char config_path[256];
+    snprintf(config_path, sizeof(config_path), "%s/%s.conf", CONFIG_DIR, name);
+
+    // 1. Read port from config file before deleting it
+    int port = -1;
+    FILE *config = fopen(config_path, "r");
+    if (config) {
+        char line[256];
+        while (fgets(line, sizeof(line), config)) {
+            if (sscanf(line, "PORT=%d", &port) == 1) {
+                break;
+            }
+        }
+        fclose(config);
+        printf("Found port %d for website %s\n", port, name);
+    } else {
+        fprintf(stderr, "Warning: Could not open config file %s to read port. Firewall rules might not be removed.\n", config_path);
+        // Continue deletion attempt even if port isn't found
+    }
+
+    // 2. Remove Tor configuration and HS directory
+    if (remove_tor_config(name) != 0) {
+        fprintf(stderr, "Error: Failed to remove Tor configuration for %s. Aborting delete.\n", name);
+        // Don't proceed if Tor config removal failed, could leave dangling HS
+        return -1;
+    }
+    char tor_service_dir[256];
+    snprintf(tor_service_dir, sizeof(tor_service_dir), "%s/%s", TOR_HIDDEN_SERVICE_DIR, name);
+    char rm_tor_cmd[512];
+    snprintf(rm_tor_cmd, sizeof(rm_tor_cmd), "rm -rf %s", tor_service_dir);
+    printf("Executing: %s\n", rm_tor_cmd);
+    if (system(rm_tor_cmd) != 0) {
+        fprintf(stderr, "Warning: Failed to remove Tor hidden service directory %s\n", tor_service_dir);
+    }
+
+    // 3. Remove Nginx configuration
+    char nginx_path[256];
+    snprintf(nginx_path, sizeof(nginx_path), "%s/%s.conf", NGINX_CONF_DIR, name);
+    printf("Removing Nginx config: %s\n", nginx_path);
+    if (remove(nginx_path) != 0 && errno != ENOENT) { // Don't warn if already gone
+        perror("Warning: Failed to remove Nginx config file");
+    }
+    printf("Executing: systemctl reload nginx\n");
+    if (system("systemctl reload nginx") != 0) {
+        fprintf(stderr, "Warning: Failed to reload Nginx configuration.\n");
+    }
+
+    // 4. Remove Firewall rules (if port was found)
+    if (port != -1) {
+        remove_firewall_rules(name, port);
+    } else {
+         printf("Skipping firewall rule removal as port was not found.\n");
+    }
+
+    // 5. Remove website directory
+    if (remove_website_directory(name) != 0) {
+         fprintf(stderr, "Warning: Failed to remove website directory %s/%s\n", WEBSITE_DIR, name);
+    }
+
+    // 6. Remove website config file
+    printf("Removing website config: %s\n", config_path);
+    if (remove(config_path) != 0 && errno != ENOENT) {
+        perror("Warning: Failed to remove website config file");
+    }
+
+    printf("Deletion process for %s completed (check warnings above).\n", name);
+    return 0;
+}
+
+// Function to show help (updated)
 void show_help() {
     printf("SN Network Website Manager\n");
     printf("-------------------------\n");
     printf("Usage: sn_website_manager [command] [options]\n\n");
+    printf("Manages Nginx/Tor configurations for websites, does NOT manage website processes.\n\n");
     printf("Commands:\n");
-    printf("  create <name> <domain>    Create a new website (auto port)\n");
-    printf("  start <name>              Start a website\n");
-    printf("  stop <name>               Stop a website\n");
-    printf("  enable <name>             Enable website on boot\n");
-    printf("  disable <name>            Disable website on boot\n");
-    printf("  list                      List all websites\n");
-    printf("  status <name>             Show website status\n");
-    printf("  help                      Show this help message\n");
+    printf("  create <name>    Create Nginx/Tor config for a new website (auto port)\n");
+    printf("  delete <name>    Delete a website and its Nginx/Tor configuration\n");
+    printf("  apply <name>     Reload Nginx and Tor to apply configurations for <name>\n");
+    printf("  list            List all configured websites (based on config files)\n");
+    printf("  status <name>   Check Nginx config syntax and service statuses\n");
+    printf("  help            Show this help message\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -318,126 +506,128 @@ int main(int argc, char *argv[]) {
     }
     
     // Check if running as root
-    if (geteuid() != 0) {
+    if (geteuid() != 0) { // Note: geteuid is POSIX/Linux specific
         printf("Error: This program must be run as root\n");
         return 1;
     }
-    
-    // Create necessary directories
-    create_directories();
     
     if (strcmp(argv[1], "create") == 0) {
         if (argc != 3) {
             printf("Error: create command requires website name\n");
             return 1;
         }
+        // Ensure necessary base directories exist before creating website
+        create_directories(); 
         
         int port = find_available_port();
         
         // First create Tor hidden service to get onion address
+        // This also adds config to torrc and reloads tor
         if (create_tor_hidden_service(argv[2], port) != 0) {
-            printf("Error: Failed to create Tor hidden service\n");
+            printf("Error: Failed to create Tor hidden service for %s\n", argv[2]);
             return 1;
         }
         
-        // Read onion address from config
+        // Read onion address back from config (written by create_tor_hidden_service)
         char config_path[256];
         snprintf(config_path, sizeof(config_path), "%s/%s.conf", CONFIG_DIR, argv[2]);
-        
-        FILE *config = fopen(config_path, "r");
-        if (!config) {
-            printf("Error: Failed to read website configuration\n");
-            return 1;
-        }
-        
-        char line[256];
         char onion_address[256] = "N/A";
-        
-        while (fgets(line, sizeof(line), config)) {
-            if (strstr(line, "ONION_ADDRESS=")) {
-                sscanf(line, "ONION_ADDRESS=%s", onion_address);
-                break;
+        FILE *config_read = fopen(config_path, "r"); // Open for reading first
+        if (config_read) {
+             char line[256];
+             while (fgets(line, sizeof(line), config_read)) {
+                 if (strstr(line, "ONION_ADDRESS=")) {
+                     sscanf(line, "ONION_ADDRESS=%s", onion_address);
+                     break;
+                 }
+             }
+             fclose(config_read);
+        }
+        // Check if onion address was found AFTER trying to read
+        if (strcmp(onion_address, "N/A") == 0) {
+            // This case might happen if create_tor_hidden_service failed silently or file IO issue
+            // Attempt to read directly from hostname file as fallback
+            char hostname_path[256];
+            snprintf(hostname_path, sizeof(hostname_path), "%s/%s/hostname", TOR_HIDDEN_SERVICE_DIR, argv[2]);
+            FILE *hostname_file = fopen(hostname_path, "r");
+            if (hostname_file) {
+                if (fgets(onion_address, sizeof(onion_address), hostname_file)) {
+                    onion_address[strcspn(onion_address, "\n")] = 0; // Remove newline
+                    char *dot_onion = strstr(onion_address, ".onion");
+                    if (dot_onion) *dot_onion = '\0'; // Remove .onion suffix
+                    printf("Warning: Read onion address directly from hostname file: %s\n", onion_address);
+                } else {
+                     printf("Error: Failed to read onion address from hostname file %s.\n", hostname_path);
+                     fclose(hostname_file);
+                     return 1; 
+                }
+                 fclose(hostname_file);
+            } else {
+                 printf("Error: Failed to get onion address from both config and hostname file for %s\n", argv[2]);
+                 return 1;
             }
         }
         
-        fclose(config);
-        
-        if (strcmp(onion_address, "N/A") == 0) {
-            printf("Error: Failed to get onion address\n");
-            return 1;
+        // Create main website config (overwrites/creates the file)
+        if (create_website_config(argv[2], onion_address, port) != 0) {
+             printf("Error: Failed to create website config file for %s\n", argv[2]);
+             return 1;
+        }
+        // Create Nginx config
+        if (create_nginx_config(argv[2], onion_address, port) != 0) {
+             printf("Error: Failed to create nginx config file for %s\n", argv[2]);
+             return 1;
+        }
+        // Create web directory
+        if (create_website_directory(argv[2]) != 0) {
+              printf("Error: Failed to create website directory for %s\n", argv[2]);
+             return 1;
+        }
+        // Add firewall rules
+        if (update_firewall_rules(argv[2], port) != 0) {
+             printf("Error: Failed to update firewall rules for %s\n", argv[2]);
+             return 1;
         }
         
-        // Create website with onion address
-        if (create_website_config(argv[2], onion_address, port) != 0 ||
-            create_nginx_config(argv[2], onion_address, port) != 0 ||
-            create_website_directory(argv[2]) != 0 ||
-            update_firewall_rules(argv[2], port) != 0) {
-            printf("Error: Failed to create website\n");
-            return 1;
+        // Reload Nginx after creating config
+        printf("Reloading Nginx configuration...\n");
+        if (system("systemctl reload nginx") != 0) {
+            fprintf(stderr, "Warning: Failed to reload Nginx after creating config for %s.\n", argv[2]);
+            // Continue, but website might not be immediately available
         }
-        
-        // Create .sn domain
+
         char sn_domain[256];
         snprintf(sn_domain, sizeof(sn_domain), "%s.%s.sn", argv[2], onion_address);
-        
         printf("Website %s created successfully!\n", argv[2]);
         printf("Domain: %s\n", sn_domain);
         printf("Onion Address: %s.onion\n", onion_address);
-        printf("Port: %d\n", port);
+        printf("Local Port: %d\n", port);
         printf("DDoS protection enabled\n");
+        printf("Security headers added\n");
+        printf("Remember to manage your website process (e.g., Node server) separately.\n");
         
-    } else if (strcmp(argv[1], "start") == 0) {
+    } else if (strcmp(argv[1], "delete") == 0) {
         if (argc != 3) {
-            printf("Error: start command requires website name\n");
+            printf("Error: delete command requires website name\n");
             return 1;
         }
-        
-        if (start_website(argv[2]) != 0) {
-            printf("Error: Failed to start website\n");
+        if (delete_website(argv[2]) != 0) {
+            printf("Error: Failed to complete website deletion for %s. Check logs/warnings.\n", argv[2]);
             return 1;
         }
-        
-        printf("Website %s started successfully!\n", argv[2]);
-        
-    } else if (strcmp(argv[1], "stop") == 0) {
+        printf("Website %s deletion completed successfully.\n", argv[2]);
+
+    } else if (strcmp(argv[1], "apply") == 0) {
         if (argc != 3) {
-            printf("Error: stop command requires website name\n");
+            printf("Error: apply command requires website name\n");
             return 1;
         }
-        
-        if (stop_website(argv[2]) != 0) {
-            printf("Error: Failed to stop website\n");
+        if (apply_configurations(argv[2]) != 0) {
+            printf("Error: Failed to apply configurations for %s. Check logs/warnings.\n", argv[2]);
             return 1;
         }
-        
-        printf("Website %s stopped successfully!\n", argv[2]);
-        
-    } else if (strcmp(argv[1], "enable") == 0) {
-        if (argc != 3) {
-            printf("Error: enable command requires website name\n");
-            return 1;
-        }
-        
-        if (enable_website(argv[2]) != 0) {
-            printf("Error: Failed to enable website\n");
-            return 1;
-        }
-        
-        printf("Website %s enabled for boot successfully!\n", argv[2]);
-        
-    } else if (strcmp(argv[1], "disable") == 0) {
-        if (argc != 3) {
-            printf("Error: disable command requires website name\n");
-            return 1;
-        }
-        
-        if (disable_website(argv[2]) != 0) {
-            printf("Error: Failed to disable website\n");
-            return 1;
-        }
-        
-        printf("Website %s disabled from boot successfully!\n", argv[2]);
-        
+        printf("Configurations for %s applied successfully (Nginx/Tor reloaded).\n", argv[2]);
+
     } else if (strcmp(argv[1], "list") == 0) {
         list_websites();
         
@@ -446,14 +636,13 @@ int main(int argc, char *argv[]) {
             printf("Error: status command requires website name\n");
             return 1;
         }
-        
         show_website_status(argv[2]);
         
     } else if (strcmp(argv[1], "help") == 0) {
         show_help();
         
     } else {
-        printf("Error: Unknown command\n");
+        printf("Error: Unknown command '%s'\n", argv[1]);
         show_help();
         return 1;
     }

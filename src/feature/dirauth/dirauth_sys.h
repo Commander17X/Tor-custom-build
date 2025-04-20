@@ -1,16 +1,24 @@
-/* Copyright (c) 2001 Matej Pfajfar.
- * Copyright (c) 2001-2004, Roger Dingledine.
+/* Copyright (c) 2001-2004, Roger Dingledine.
  * Copyright (c) 2004-2006, Roger Dingledine, Nick Mathewson.
  * Copyright (c) 2007-2021, The Tor Project, Inc. */
 /* See LICENSE for licensing information */
 
 /**
- * @file dirauth_sys.h
- * @brief Header for dirauth_sys.c
+ * \file dirauth_sys.h
+ * \brief Headers for dirauth_sys.c
  **/
 
-#ifndef DIRAUTH_SYS_H
-#define DIRAUTH_SYS_H
+#ifndef TOR_DIRAUTH_SYS_H
+#define TOR_DIRAUTH_SYS_H
+
+#include "core/or/or.h"
+#include "feature/dirauth/dirauth_periodic.h"
+#include "feature/dirauth/dirvote.h"
+#include "feature/dirauth/shared_random.h"
+#include "feature/dirauth/voting_schedule.h"
+
+int dirauth_init(void);
+void dirauth_free_all(void);
 
 struct dirauth_options_t;
 const struct dirauth_options_t *dirauth_get_options(void);
@@ -29,4 +37,4 @@ extern const struct subsys_fns_t sys_dirauth;
 STATIC int dirauth_set_options(void *arg);
 #endif
 
-#endif /* !defined(DIRAUTH_SYS_H) */
+#endif /* !defined(TOR_DIRAUTH_SYS_H) */
