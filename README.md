@@ -539,12 +539,6 @@ src/
 
 GNU General Public License v3.0
 
-## Contact
-
-Voor vragen of problemen:
-- Issue tracker: [GitHub Issues](https://github.com/your-repo/issues)
-- Email: support@sn.network
-
 ## Website Manager <a name="website-manager"></a>
 
 ### Overview
@@ -735,12 +729,6 @@ src/
 
 GNU General Public License v3.0
 
-### Contact
-
-For questions or issues:
-- Issue tracker: [GitHub Issues](https://github.com/your-repo/issues)
-- Email: support@sn.network
-
 ## Testing
 
 To test the setup after creating a website (e.g., `sudo sn_website_manager create test`):
@@ -848,9 +836,3 @@ src/
 ## Licentie
 
 GNU General Public License v3.0
-
-## Contact
-
-Voor vragen of problemen:
-- Issue tracker: [GitHub Issues](https://github.com/your-repo/issues)
-- Email: support@sn.network 
