@@ -1,4 +1,21 @@
-# Tor Custom Build / Tor Aangepaste Versie
+# Tor Custom Build / Tor Aangepaste Versie ### 
+
+
+
+
+## 
+
+
+IMPORTANT NOTICE! 
+
+THIS CUSTOM BUILD IS BROKEN SO U MAY IMPROVE AND FIX THE CODE YOURSELF!
+
+
+
+
+
+
+##
 
 [English](#english) | [Nederlands](#nederlands)
 
